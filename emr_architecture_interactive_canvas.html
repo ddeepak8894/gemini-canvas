@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMR Architecture Interactive Canvas</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              blue: '#1565C0',
+              navy: '#283593',
+              teal: '#00695C',
+              mint: '#00BFA5',
+              purple: '#4527A0',
+              amber: '#D97706',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* Subtle Grid Canvas Background */
+    .canvas-bg-grid {
+      background-size: 28px 28px;
+      background-image: 
+        linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    }
+    .dark .canvas-bg-grid {
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+
+    /* Node Card Dragging & Selection */
+    .arch-node {
+      transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.05s ease-out;
+      cursor: grab;
+      touch-action: none;
+    }
+    .arch-node:active {
+      cursor: grabbing;
+    }
+    .arch-node.selected {
+      outline: 2px solid #0d9488;
+      outline-offset: 3px;
+      box-shadow: 0 16px 32px -6px rgba(13, 148, 136, 0.28);
+    }
+
+    /* Custom Scrollbar for drawers and modals */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.7);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 w-screen h-screen overflow-hidden flex flex-col">
+
+  <header class="h-14 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-base shadow-sm">
+        <i class="fa-solid fa-network-wired"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          EMR &amp; Data IO Architecture
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 uppercase">
+            Interactive Canvas
+          </span>
+        </h1>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">AWS VPC Isolation · Zero AWS Console Overhead · S3 Iceberg Engine</p>
+      </div>
+    </div>
+
+    <!-- Architecture Architecture Mode Switcher -->
+    <div class="flex items-center gap-2">
+      <div class="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center text-xs font-semibold">
+        <button id="btnArchMonitor" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-gauge-high text-xs"></i>
+          <span>1. /emr-monitor</span>
+        </button>
+        <button id="btnArchWarehouse" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-database text-xs"></i>
+          <span>2. /data-io-analytics-warehouse</span>
+        </button>
+      </div>
+
+      <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+      <!-- Simulation Action Controls -->
+      <button id="btnRunSimulation" class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-xs transition-all active:scale-95">
+        <i class="fa-solid fa-play text-[10px]"></i>
+        <span id="simBtnLabel">Simulate Flow</span>
+      </button>
+
+      <button id="btnContinuousFlow" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all">
+        <i class="fa-solid fa-bolt text-teal-600"></i>
+        <span>Continuous Stream</span>
+      </button>
+
+      <button id="btnResetView" class="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors" title="Reset Viewport">
+        <i class="fa-solid fa-crosshairs text-xs"></i>
+      </button>
+
+      <button id="btnToggleDark" class="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-moon text-xs"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 relative overflow-hidden bg-slate-50 dark:bg-slate-950 canvas-bg-grid" id="canvas-container">
+    
+    <!-- SVG Connector Layer for Bezier Lines and Glowing Particles -->
+    <svg id="connections-layer" class="absolute inset-0 w-full h-full pointer-events-none z-10" style="overflow: visible;">
+      <defs>
+        <!-- Gradients for Connectors -->
+        <linearGradient id="grad-blue-navy" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#2563eb" />
+          <stop offset="100%" stop-color="#4f46e5" />
+        </linearGradient>
+        <linearGradient id="grad-navy-teal" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4f46e5" />
+          <stop offset="100%" stop-color="#0d9488" />
+        </linearGradient>
+        <linearGradient id="grad-teal-mint" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#0d9488" />
+          <stop offset="100%" stop-color="#10b981" />
+        </linearGradient>
+        <linearGradient id="grad-teal-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#0d9488" />
+          <stop offset="100%" stop-color="#7c3aed" />
+        </linearGradient>
+
+        <!-- Particle Glow Filters -->
+        <filter id="packet-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <g id="svg-paths-group"></g>
+      <g id="svg-particles-group"></g>
+    </svg>
+
+    <!-- Interactive Draggable Nodes Container -->
+    <div id="nodes-container" class="absolute inset-0 z-20 pointer-events-auto"></div>
+
+    <!-- Floating Canvas Zoom & Pan Control Widget -->
+    <div class="absolute bottom-5 left-5 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 flex items-center gap-1 shadow-lg text-xs font-semibold">
+      <button id="btnZoomOut" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-minus text-[11px]"></i>
+      </button>
+      <span id="lblZoomLevel" class="px-2 text-slate-600 dark:text-slate-400 font-mono text-[11px] min-w-[46px] text-center">100%</span>
+      <button id="btnZoomIn" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-plus text-[11px]"></i>
+      </button>
+      <div class="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+      <button id="btnFitCanvas" class="px-2 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 transition-colors text-[11px]">
+        <i class="fa-solid fa-expand text-[10px]"></i> Fit
+      </button>
+    </div>
+
+    <div class="absolute bottom-5 right-5 z-30 max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3.5 transition-all duration-300" id="simConsoleDrawer">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Realtime Protocol Telemetry
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="activePacketsCounter" class="text-[10px] font-mono font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
+            0 In-Flight
+          </span>
+          <button id="btnClearLogs" class="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="telemetryLogs" class="h-24 overflow-y-auto space-y-1.5 font-mono text-[11px] text-slate-600 dark:text-slate-400 pr-1">
+        <div class="text-slate-400 dark:text-slate-500 italic">// Ready. Click "Simulate Flow" or drag nodes on the canvas.</div>
+      </div>
+    </div>
+  </main>
+
+  <aside id="nodeInspectorDrawer" class="fixed right-0 top-14 bottom-0 w-88 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-40 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <!-- Header -->
+    <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-950/70">
+      <div class="flex items-center gap-2.5">
+        <div id="inspectorIconBox" class="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-sm shadow-xs">
+          <i class="fa-solid fa-microchip"></i>
+        </div>
+        <div>
+          <h2 id="inspectorTitle" class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[180px]">Node Inspector</h2>
+          <span id="inspectorSubtitle" class="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider block">Zone 1 · Client</span>
+        </div>
+      </div>
+      <button id="btnCloseInspector" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Inspector Content Scrollable -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+      
+      <!-- Security Boundary Pill -->
+      <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Network Security Perimeter</span>
+        <div id="inspectorBoundary" class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-shield text-teal-600"></i> Local Machine
+        </div>
+      </div>
+
+      <!-- Description Block -->
+      <div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Architecture Function</span>
+        <p id="inspectorDescription" class="text-slate-600 dark:text-slate-300 leading-relaxed">
+          Select a node on the canvas to inspect its role, port bindings, security constraints, and telemetry.
+        </p>
+      </div>
+
+      <!-- Technical Specifications List -->
+      <div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Interface &amp; Protocol Specs</span>
+        <div id="inspectorSpecs" class="space-y-1.5">
+          <!-- Dynamic items -->
+        </div>
+      </div>
+
+      <!-- Live Code / CLI snippet -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reference Invocation</span>
+          <button id="btnCopySnippet" class="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+            <i class="fa-solid fa-copy mr-1"></i>Copy
+          </button>
+        </div>
+        <pre id="inspectorCode" class="p-3 rounded-xl bg-slate-900 text-teal-400 font-mono text-[11px] overflow-x-auto border border-slate-800">
+# Inspect node
+        </pre>
+      </div>
+
+      <!-- Compliance checklist -->
+      <div class="p-3 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-xl">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">Data Residency &amp; Compliance</span>
+        <ul id="inspectorCompliance" class="mt-1.5 space-y-1 text-teal-800 dark:text-teal-200">
+          <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-emerald-500"></i> No external network egress</li>
+          <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-emerald-500"></i> MFA authenticated tunnel</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Inspector Footer Action Button -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+      <button id="btnTriggerNodeAction" class="w-full py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm">
+        Simulate Traffic Through Node
+      </button>
+    </div>
+  </aside>
+
+  <div id="unifiedDashboardModal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4 sm:p-6 transition-all">
+    <div class="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Mock Browser Header / Chrome -->
+      <div class="h-11 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between shrink-0">
+        <!-- Window Controls -->
+        <div class="flex items-center gap-2">
+          <button id="btnCloseModalX" class="w-3 h-3 rounded-full bg-rose-500 hover:opacity-80 transition-opacity" title="Close"></button>
+          <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+          <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+          <span class="ml-2 text-xs font-mono text-slate-500 font-medium hidden sm:inline">EMR Gateway v2.4</span>
+        </div>
+
+        <!-- Address Bar -->
+        <div class="flex-1 max-w-md mx-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1 flex items-center gap-2 text-xs font-mono shadow-xs">
+          <i class="fa-solid fa-lock text-emerald-500 text-[10px]"></i>
+          <span class="text-slate-400">http://</span>
+          <span class="text-slate-800 dark:text-slate-100 font-bold">localhost:9977</span>
+          <span class="text-slate-400">/overview</span>
+          <span class="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
+            SSH TUNNEL ACTIVE
+          </span>
+        </div>
+
+        <!-- Quick Controls -->
+        <div class="flex items-center gap-2">
+          <button id="btnModalRefresh" class="w-7 h-7 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-xs" title="Refresh Telemetry">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+          <button id="btnCloseModal" class="px-2.5 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+            Close
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Sub-Navbar -->
+      <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-slate-900 dark:text-white">CCN EMR Diagnostic Hub</h3>
+              <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> LIVE STREAMING
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Master: <code class="font-mono text-teal-600 dark:text-teal-400">emr-prod-analytics-master.internal</code> · Ingress: CCN Bastion (SSH)</p>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <button class="dash-tab active px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs" data-tab="all">
+            Unified View (All 3)
+          </button>
+          <button class="dash-tab px-3 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="yarn">
+            YARN (8088)
+          </button>
+          <button class="dash-tab px-3 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="spark">
+            Spark (18080)
+          </button>
+          <button class="dash-tab px-3 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="livy">
+            Livy (8998)
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Scrollable Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/60 dark:bg-slate-950/50">
+        
+        <!-- KPI Cards Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <!-- KPI 1: YARN Memory -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
+              <span class="font-semibold uppercase tracking-wider text-[10px]">YARN Cluster Memory</span>
+              <i class="fa-solid fa-memory text-teal-600"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="kpiMemoryVal" class="text-xl font-extrabold text-slate-900 dark:text-white font-mono">428 GB</span>
+              <span class="text-xs text-slate-400">/ 512 GB</span>
+            </div>
+            <div class="mt-2 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div id="kpiMemoryBar" class="bg-teal-600 h-full rounded-full transition-all duration-500" style="width: 83%"></div>
+            </div>
+            <span class="text-[10px] text-teal-600 font-semibold mt-1 inline-block">83% allocated across 16 core nodes</span>
+          </div>
+
+          <!-- KPI 2: Spark Active Vcores -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
+              <span class="font-semibold uppercase tracking-wider text-[10px]">Active Spark VCores</span>
+              <i class="fa-solid fa-microchip text-orange-500"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="kpiVcoresVal" class="text-xl font-extrabold text-slate-900 dark:text-white font-mono">112</span>
+              <span class="text-xs text-slate-400">/ 128 Cores</span>
+            </div>
+            <div class="mt-2 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div id="kpiVcoresBar" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 87%"></div>
+            </div>
+            <span class="text-[10px] text-orange-600 font-semibold mt-1 inline-block">32 active executors allocated</span>
+          </div>
+
+          <!-- KPI 3: Livy Sessions -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
+              <span class="font-semibold uppercase tracking-wider text-[10px]">Livy REST Sessions</span>
+              <i class="fa-solid fa-bolt text-sky-500"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="kpiLivyVal" class="text-xl font-extrabold text-slate-900 dark:text-white font-mono">4 Active</span>
+              <span class="text-xs text-emerald-500 font-semibold">100% healthy</span>
+            </div>
+            <div class="mt-2 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-sky-500 h-full rounded-full" style="width: 80%"></div>
+            </div>
+            <span class="text-[10px] text-sky-600 font-semibold mt-1 inline-block">Interactive PySpark &amp; SQL pool</span>
+          </div>
+
+          <!-- KPI 4: Tunnel Roundtrip Latency -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
+              <span class="font-semibold uppercase tracking-wider text-[10px]">SSH Tunnel Roundtrip</span>
+              <i class="fa-solid fa-shield-halved text-emerald-500"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="kpiLatencyVal" class="text-xl font-extrabold text-emerald-600 font-mono">11 ms</span>
+              <span class="text-xs text-slate-400">Zero AWS Console</span>
+            </div>
+            <div class="mt-2 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full" style="width: 95%"></div>
+            </div>
+            <span class="text-[10px] text-emerald-600 font-semibold mt-1 inline-block">Zero IAM credential exposure</span>
+          </div>
+        </div>
+
+        <!-- Live Spark Applications Table -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-fire-flame-curved text-orange-500"></i>
+              <h4 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Spark UI Converged Applications (Live Jobs)
+              </h4>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnInjectJob" class="px-2.5 py-1 rounded bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+                <span>Inject Query Job</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-200 dark:border-slate-800 font-mono">
+                <tr>
+                  <th class="py-2.5 px-4">Application ID</th>
+                  <th class="py-2.5 px-4">Job Name / Description</th>
+                  <th class="py-2.5 px-4">Status</th>
+                  <th class="py-2.5 px-4">Stage Progress</th>
+                  <th class="py-2.5 px-4">Shuffle Read/Write</th>
+                  <th class="py-2.5 px-4">Duration</th>
+                </tr>
+              </thead>
+              <tbody id="dashJobsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                <!-- Job 1 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-4 text-teal-700 dark:text-teal-400 font-bold">app-20260928-09142</td>
+                  <td class="py-3 px-4 font-sans font-medium text-slate-800 dark:text-slate-200">
+                    <div>Iceberg Partition Merge · <code>transactions_v2</code></div>
+                    <span class="text-[10px] text-slate-400">Triggered by /data-io-analytics-warehouse</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> RUNNING
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 w-44">
+                    <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                      <span class="job-progress-label">Stage 4/5 (82%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div class="job-progress-bar bg-teal-600 h-full rounded-full transition-all duration-700" style="width: 82%"></div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">14.8 GB / 1.2 GB</td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">2m 14s</td>
+                </tr>
+
+                <!-- Job 2 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-4 text-teal-700 dark:text-teal-400 font-bold">app-20260928-09138</td>
+                  <td class="py-3 px-4 font-sans font-medium text-slate-800 dark:text-slate-200">
+                    <div>Hourly Merchant GMV Rollup · <code>spark-sql</code></div>
+                    <span class="text-[10px] text-slate-400">Scheduled Livy Session #9281</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> RUNNING
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 w-44">
+                    <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                      <span class="job-progress-label">Stage 2/3 (64%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div class="job-progress-bar bg-teal-600 h-full rounded-full transition-all duration-700" style="width: 64%"></div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">6.2 GB / 440 MB</td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">54s</td>
+                </tr>
+
+                <!-- Job 3 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-4 text-slate-500 font-bold">app-20260928-09095</td>
+                  <td class="py-3 px-4 font-sans font-medium text-slate-800 dark:text-slate-200">
+                    <div>Data Quality &amp; Schema Integrity Validation</div>
+                    <span class="text-[10px] text-slate-400">Automated Pipeline Check</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px]">
+                      <i class="fa-solid fa-check text-emerald-500"></i> SUCCEEDED
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 w-44">
+                    <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                      <span>12/12 Stages</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div class="bg-emerald-500 h-full rounded-full" style="width: 100%"></div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">1.1 GB / 28 MB</td>
+                  <td class="py-3 px-4 text-slate-600 dark:text-slate-300">1m 08s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Dual Sub-panels: YARN Nodes + Livy Sessions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Panel 1: YARN Node Managers Health -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-teal-600"></i> YARN Node Managers (Port 8088)
+              </span>
+              <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">16/16 Healthy</span>
+            </div>
+            <div class="space-y-2 text-xs">
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span class="font-mono text-slate-700 dark:text-slate-300">ip-10-24-101-12.ec2.internal</span>
+                <span class="text-[10px] font-bold text-teal-600 font-mono">8 Cores · 28/32 GB</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span class="font-mono text-slate-700 dark:text-slate-300">ip-10-24-101-15.ec2.internal</span>
+                <span class="text-[10px] font-bold text-teal-600 font-mono">8 Cores · 30/32 GB</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span class="font-mono text-slate-700 dark:text-slate-300">ip-10-24-101-18.ec2.internal</span>
+                <span class="text-[10px] font-bold text-teal-600 font-mono">8 Cores · 26/32 GB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 2: Apache Livy Interactive Pool -->
+          <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-sky-500"></i> Apache Livy Sessions (Port 8998)
+              </span>
+              <span class="text-[10px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-950 px-2 py-0.5 rounded">REST API OK</span>
+            </div>
+            <div class="space-y-2 text-xs">
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <span class="font-mono font-bold text-slate-800 dark:text-slate-200">Session #9281</span>
+                  <span class="text-[10px] text-slate-400 ml-1">(pyspark)</span>
+                </div>
+                <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">BUSY · EXECUTING</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <span class="font-mono font-bold text-slate-800 dark:text-slate-200">Session #9282</span>
+                  <span class="text-[10px] text-slate-400 ml-1">(spark)</span>
+                </div>
+                <span class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px]">IDLE · READY</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <span class="font-mono font-bold text-slate-800 dark:text-slate-200">Session #9283</span>
+                  <span class="text-[10px] text-slate-400 ml-1">(sparkr)</span>
+                </div>
+                <span class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px]">IDLE · READY</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dashboard Footer Strip -->
+      <div class="px-6 py-2.5 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-[11px] flex items-center justify-between text-slate-500 font-mono shrink-0">
+        <span class="flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-check text-emerald-500"></i>
+          Tunnel Target: <code>localhost:9977 -> ccn-jump-host -> emr-master</code>
+        </span>
+        <span>Auto-refresh: 2s (Active)</span>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // State variables
+    let currentMode = 'monitor'; // 'monitor' or 'warehouse'
+    let selectedNode = null;
+    let zoomLevel = 1;
+    let panOffset = { x: 0, y: 0 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let isSimulating = false;
+    let continuousStream = false;
+    let activeParticles = [];
+    let particleAnimationId = null;
+
+    // Node definitions for Mode 1: /emr-monitor
+    const monitorNodes = [
+      {
+        id: 'laptop-dev',
+        zone: 'ZONE 1 · LAPTOP',
+        badge: 'CLIENT',
+        label: 'Developer Local',
+        sub: '/emr-monitor CLI',
+        icon: 'fa-laptop-code',
+        color: '#1565C0',
+        zoneColor: '#1d4ed8',
+        zoneBg: '#dbeafe',
+        x: 60,
+        y: 190,
+        width: 210,
+        boundary: 'Local Developer Workstation',
+        desc: 'Initiates encrypted loopback tunnel via single CLI command without exposing AWS IAM or management console credentials.',
+        specs: ['Port Bind: localhost:9977', 'Protocol: SSH -L tunnel', 'Auth: SSH Keypair + MFA token'],
+        code: '/emr-monitor --cluster-id j-2026EMRPROD',
+        compliance: ['Zero cloud credentials stored on disk', 'Audit log shipped to CCN SIEM']
+      },
+      {
+        id: 'secure-access',
+        zone: 'ZONE 2 · SECURE ACCESS',
+        badge: 'BASTION',
+        label: 'CCN Jump Host',
+        sub: 'Company VPN Proxy Gate',
+        icon: 'fa-shield-halved',
+        color: '#283593',
+        zoneColor: '#3730a3',
+        zoneBg: '#e0e7ff',
+        x: 340,
+        y: 190,
+        width: 220,
+        boundary: 'Corporate VPC Boundary (DMZ)',
+        desc: 'Authorizes developer VPN session and proxies SSH connection into the private AWS VPC subnet where EMR Master resides.',
+        specs: ['Ingress: Port 22 (VPN restricted)', 'Egress: Port 22 -> EMR Master internal IP', 'Security Group: sg-ccn-jump-bastion'],
+        code: 'ssh -N -D 9977 -J user@jump.ccn.internal hadoop@emr-master.internal',
+        compliance: ['Strict IP whitelisting', 'No public IPv4 route table']
+      },
+      {
+        id: 'emr-master',
+        zone: 'ZONE 3 · EMR CLUSTER',
+        badge: 'MASTER NODE',
+        label: 'EMR Master Node',
+        sub: 'Private VPC Internal Subnet',
+        icon: 'fa-microchip',
+        color: '#00695C',
+        zoneColor: '#0f766e',
+        zoneBg: '#ccfbf1',
+        x: 630,
+        y: 190,
+        width: 220,
+        boundary: 'AWS Isolated Private VPC',
+        desc: 'Coordinates YARN resource manager, Spark standalone/history server, and Livy daemon. Fans out telemetry across three web endpoints.',
+        specs: ['Instance: r6g.2xlarge Graviton', 'Subnet: subnet-emr-priv-1a', 'OS: Amazon Linux 2023'],
+        code: 'systemctl status hadoop-yarn-resourcemanager livy-server',
+        compliance: ['Encrypted EBS volumes (KMS)', 'IMDSv2 enforced']
+      },
+      {
+        id: 'node-yarn',
+        zone: 'ZONE 3 · EMR CLUSTER',
+        badge: 'PORT 8088',
+        label: 'YARN UI',
+        sub: 'Cluster ResourceManager',
+        icon: 'fa-layer-group',
+        color: '#00897B',
+        zoneColor: '#0f766e',
+        zoneBg: '#ccfbf1',
+        x: 920,
+        y: 70,
+        width: 200,
+        boundary: 'Internal EMR VPC Fabric',
+        desc: 'Renders cluster memory, allocated virtual cores, active container distribution, and NodeManager health telemetry.',
+        specs: ['Daemon: YARN ResourceManager', 'Port: 8088/tcp', 'Metrics: Core memory & node heartbeat'],
+        code: 'curl -s http://localhost:8088/ws/v1/cluster/info',
+        compliance: ['Kerberos authentication supported', 'Private loopback only']
+      },
+      {
+        id: 'node-spark',
+        zone: 'ZONE 3 · EMR CLUSTER',
+        badge: 'PORT 18080',
+        label: 'Spark UI',
+        sub: 'DAG Execution History',
+        icon: 'fa-fire-flame-curved',
+        color: '#E65100',
+        zoneColor: '#c2410c',
+        zoneBg: '#ffedd5',
+        x: 920,
+        y: 200,
+        width: 200,
+        boundary: 'Internal EMR VPC Fabric',
+        desc: 'Displays completed and in-flight Spark job stages, DAG execution plans, shuffle read/write statistics, and task executor timelines.',
+        specs: ['Daemon: Spark History Server', 'Port: 18080/tcp', 'Storage: s3://emr-event-logs/'],
+        code: 'spark-submit --master yarn --deploy-mode cluster ...',
+        compliance: ['Read-only event log streaming', 'Zero PII in event logs']
+      },
+      {
+        id: 'node-livy',
+        zone: 'ZONE 3 · EMR CLUSTER',
+        badge: 'PORT 8998',
+        label: 'Livy REST API',
+        sub: 'Interactive Sessions',
+        icon: 'fa-bolt',
+        color: '#0284C7',
+        zoneColor: '#0369a1',
+        zoneBg: '#e0f2fe',
+        x: 920,
+        y: 330,
+        width: 200,
+        boundary: 'Internal EMR VPC Fabric',
+        desc: 'Exposes programmatic REST session endpoints for executing ad-hoc PySpark snippets, SparkSQL statements, and streaming batch pipelines.',
+        specs: ['Daemon: Apache Livy 0.8', 'Port: 8998/tcp', 'Protocol: JSON REST'],
+        code: 'curl -X POST http://localhost:8998/sessions -d \'{"kind":"pyspark"}\'',
+        compliance: ['Role-based session isolation', 'Session TTL auto-pruning']
+      },
+      {
+        id: 'output-dash',
+        zone: 'ZONE 4 · OUTPUT',
+        badge: 'CONVERGENCE',
+        label: 'EMR Dashboard',
+        sub: 'localhost:9977 (Unified)',
+        icon: 'fa-chart-line',
+        color: '#00BFA5',
+        zoneColor: '#059669',
+        zoneBg: '#d1fae5',
+        x: 1200,
+        y: 190,
+        width: 230,
+        boundary: 'Local Developer Browser Window',
+        desc: 'Unified local dashboard presenting synchronized real-time feeds from YARN (8088), Spark (18080), and Livy (8998) without AWS console access.',
+        specs: ['Access URL: http://localhost:9977', 'Refresh Interval: 2.0s SSE', 'Browser Security: Content-Security-Policy strict'],
+        code: 'open http://localhost:9977',
+        compliance: ['Zero cloud console IAM requirement', 'Zero data egress cost']
+      }
+    ];
+
+    // Node definitions for Mode 2: /data-io-analytics-warehouse
+    const warehouseNodes = [
+      {
+        id: 'wh-laptop',
+        zone: 'ZONE 1 · LAPTOP',
+        badge: 'AI SKILL',
+        label: 'Claude / Skill',
+        sub: 'Local Query Assistant',
+        icon: 'custom-claude',
+        color: '#1e3a8a',
+        zoneColor: '#1d4ed8',
+        zoneBg: '#dbeafe',
+        x: 80,
+        y: 190,
+        width: 220,
+        boundary: 'Client CLI / Local Claude Terminal',
+        desc: 'Translates natural language questions into optimized Spark SQL, issues request through authenticated tunnel, and presents formatted synthesis.',
+        specs: ['Input: Plain English prompt', 'Output: Synthesized tabular insight', 'Engine: Claude 3.5 Sonnet / Local Skill'],
+        code: '/data-io-analytics-warehouse "Show daily GMV by payment channel for Q3"',
+        compliance: ['No raw tabular data retrieved to laptop', 'Only final aggregated answer transmitted']
+      },
+      {
+        id: 'wh-emr',
+        zone: 'CENTRE BOX · COMPUTE',
+        badge: 'AWS SECURE VPC',
+        label: 'CCN EMR Cluster',
+        sub: 'Livy → Spark → Query Execution',
+        icon: 'fa-server',
+        color: '#00695C',
+        zoneColor: '#0f766e',
+        zoneBg: '#ccfbf1',
+        x: 440,
+        y: 150,
+        width: 440,
+        boundary: 'Isolated Private VPC Subnet',
+        desc: 'Primary processing hub. Livy receives query request, submits parallel jobs across Spark workers, performs in-memory aggregation, and computes result.',
+        specs: ['Cluster: 16 Core Nodes (128 vCPU, 512GB RAM)', 'Engines: Livy 0.8 + Apache Spark 3.5', 'Storage Connector: Iceberg AWS S3 Catalog'],
+        code: 'spark.read.table("iceberg_analytics.transactions").groupBy("channel").sum("amount")',
+        compliance: ['All compute runs inside AWS perimeter', 'Zero unencrypted inter-node communication']
+      },
+      {
+        id: 'wh-s3',
+        zone: 'STORAGE · DATA LAKE',
+        badge: 'PERSISTENT',
+        label: 'Iceberg S3 Tables',
+        sub: 'Parquet Columnar Data Lake',
+        icon: 'custom-s3',
+        color: '#4c1d95',
+        zoneColor: '#6d28d9',
+        zoneBg: '#ede9fe',
+        x: 1020,
+        y: 190,
+        width: 220,
+        boundary: 'Amazon S3 Object Storage Boundary',
+        desc: 'Stores enterprise transactions in ACID-compliant Apache Iceberg Parquet partitions with metadata snapshots. Data never exits AWS boundary.',
+        specs: ['Format: Apache Iceberg v2 / Parquet', 'Storage: Amazon S3 Standard', 'Encryption: AWS KMS SSE-KMS'],
+        code: 's3://ccn-analytics-warehouse/tables/iceberg_orders/',
+        compliance: ['Raw data never leaves AWS VPC', 'HIPAA & PCI-DSS compliant bucket policies']
+      }
+    ];
+
+    const monitorConnections = [
+      { from: 'laptop-dev', to: 'secure-access', label: 'SSH Tunnel (MFA)', color: '#2563eb' },
+      { from: 'secure-access', to: 'emr-master', label: 'VPC Peering Proxy', color: '#4f46e5' },
+      { from: 'emr-master', to: 'node-yarn', label: 'Port 8088', color: '#0d9488' },
+      { from: 'emr-master', to: 'node-spark', label: 'Port 18080', color: '#ea580c' },
+      { from: 'emr-master', to: 'node-livy', label: 'Port 8998', color: '#0284c7' },
+      { from: 'node-yarn', to: 'output-dash', label: 'YARN Metrics', color: '#10b981' },
+      { from: 'node-spark', to: 'output-dash', label: 'Spark Stages', color: '#10b981' },
+      { from: 'node-livy', to: 'output-dash', label: 'Livy REST Sessions', color: '#10b981' }
+    ];
+
+    const warehouseConnections = [
+      { from: 'wh-laptop', to: 'wh-emr', label: 'Plain English Query →', color: '#2563eb', offset: -16 },
+      { from: 'wh-emr', to: 'wh-laptop', label: '← Synthesized Answer', color: '#059669', offset: 16 },
+      { from: 'wh-emr', to: 'wh-s3', label: 'SQL Execution →', color: '#0d9488', offset: -16 },
+      { from: 'wh-s3', to: 'wh-emr', label: '← Data Stays In AWS', color: '#7c3aed', offset: 16 }
+    ];
+
+    // Helper functions
+    function getCurrentNodes() {
+      return currentMode === 'monitor' ? monitorNodes : warehouseNodes;
+    }
+    function getCurrentConnections() {
+      return currentMode === 'monitor' ? monitorConnections : warehouseConnections;
+    }
+
+    const nodesContainer = document.getElementById('nodes-container');
+    const svgPathsGroup = document.getElementById('svg-paths-group');
+    const svgParticlesGroup = document.getElementById('svg-particles-group');
+
+    function renderNodes() {
+      nodesContainer.innerHTML = '';
+      const nodes = getCurrentNodes();
+
+      nodes.forEach(node => {
+        const el = document.createElement('div');
+        el.id = `node-${node.id}`;
+        el.className = `arch-node absolute bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3.5 shadow-lg select-none ${selectedNode?.id === node.id ? 'selected' : ''}`;
+        el.style.width = `${node.width}px`;
+        el.style.left = `${node.x}px`;
+        el.style.top = `${node.y}px`;
+
+        let iconMarkup = '';
+        if (node.icon === 'custom-claude') {
+          iconMarkup = `
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+              <path d="M17.8 2L14.2 2L14.2 12.8L6.6 5.2L4 7.8L11.6 15.4L1 15.4L1 19L11.6 19L4 26.6L6.6 29.2L14.2 21.6L14.2 32L17.8 32L17.8 21.6L25.4 29.2L28 26.6L20.4 19L31 19L31 15.4L20.4 15.4L28 7.8L25.4 5.2L17.8 12.8L17.8 2Z" fill="#D97706"></path>
+            </svg>`;
+        } else if (node.icon === 'custom-s3') {
+          iconMarkup = `
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+              <path d="M16 3L4 9v14l12 6 12-6V9L16 3z" fill="#E25A38" opacity="0.15"></path>
+              <path d="M16 3L4 9l12 6 12-6-12-6z" fill="#E25A38"></path>
+              <path d="M4 9v14l12 6V15L4 9z" fill="#B74024"></path>
+              <path d="M28 9v14l-12 6V15l12-6z" fill="#EB7255"></path>
+              <path d="M10 16l6 3 6-3M10 20l6 3 6-3" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>`;
+        } else {
+          iconMarkup = `<i class="fa-solid ${node.icon} text-lg"></i>`;
+        }
+
+        // Special inner preview layout for EMR Cluster in Warehouse mode
+        let innerCustomBlock = '';
+        if (node.id === 'wh-emr') {
+          innerCustomBlock = `
+            <div class="mt-2.5 p-2 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-1 text-[11px] font-mono">
+              <div class="flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded">
+                <i class="fa-solid fa-bolt text-teal-400 text-[10px]"></i>
+                <span>Livy</span>
+              </div>
+              <i class="fa-solid fa-arrow-right text-[10px] text-teal-400"></i>
+              <div class="flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded">
+                <i class="fa-solid fa-fire text-orange-400 text-[10px]"></i>
+                <span>Spark</span>
+              </div>
+              <i class="fa-solid fa-arrow-right text-[10px] text-teal-400"></i>
+              <div class="flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded">
+                <i class="fa-solid fa-filter text-sky-400 text-[10px]"></i>
+                <span>Query</span>
+              </div>
+            </div>
+            <div class="mt-2 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 rounded-lg p-1.5 text-center text-[10px] font-bold text-teal-700 dark:text-teal-300">
+              Data aggregation &amp; calculation fully processed here
+            </div>
+          `;
+        }
+
+        el.innerHTML = `
+          <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+            <span class="text-[10px] font-extrabold tracking-wider uppercase" style="color:${node.zoneColor}">
+              ${node.zone}
+            </span>
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full" style="background:${node.zoneBg}; color:${node.zoneColor};">
+              ${node.badge}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3 p-3 rounded-xl shadow-xs text-white mb-2" style="background: linear-gradient(145deg, ${node.color}, ${node.zoneColor});">
+            <div class="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+              ${iconMarkup}
+            </div>
+            <div class="overflow-hidden">
+              <h3 class="text-sm font-bold truncate leading-tight">${node.label}</h3>
+              <p class="text-[11px] opacity-90 truncate font-medium">${node.sub}</p>
+            </div>
+          </div>
+
+          ${innerCustomBlock}
+
+          <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 rounded-lg p-2 flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <i class="fa-solid fa-shield text-[10px] text-teal-600"></i>
+            <span class="text-[10px] font-medium truncate">${node.boundary}</span>
+          </div>
+
+          ${node.id === 'output-dash' ? `
+            <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button onclick="event.stopPropagation(); openUnifiedDashboardModal();" class="w-full py-1.5 px-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                <i class="fa-solid fa-up-right-from-square text-[9px]"></i>
+                <span>Open Live localhost:9977</span>
+              </button>
+            </div>
+          ` : ''}
+        `;
+
+        // Interactive dragging listeners
+        el.addEventListener('mousedown', (e) => startDragNode(e, node));
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openInspector(node);
+        });
+
+        nodesContainer.appendChild(el);
+      });
+
+      renderConnections();
+    }
+
+    function renderConnections() {
+      svgPathsGroup.innerHTML = '';
+      const connections = getCurrentConnections();
+      const nodes = getCurrentNodes();
+      const nodeMap = {};
+      nodes.forEach(n => nodeMap[n.id] = n);
+
+      connections.forEach(conn => {
+        const fromNode = nodeMap[conn.from];
+        const toNode = nodeMap[conn.to];
+        if (!fromNode || !toNode) return;
+
+        // Calculate socket attachments
+        const offset = conn.offset || 0;
+        let startX, startY, endX, endY;
+
+        if (fromNode.x < toNode.x) {
+          // Left to right
+          startX = fromNode.x + fromNode.width;
+          startY = fromNode.y + 60 + offset;
+          endX = toNode.x;
+          endY = toNode.y + 60 + offset;
+        } else {
+          // Right to left (return paths)
+          startX = fromNode.x;
+          startY = fromNode.y + 60 + offset;
+          endX = toNode.x + toNode.width;
+          endY = toNode.y + 60 + offset;
+        }
+
+        const dx = Math.abs(endX - startX) * 0.5;
+        const cp1x = fromNode.x < toNode.x ? startX + dx : startX - dx;
+        const cp1y = startY;
+        const cp2x = fromNode.x < toNode.x ? endX - dx : endX + dx;
+        const cp2y = endY;
+
+        const pathData = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+
+        // Glow underlay path
+        const glowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        glowPath.setAttribute('d', pathData);
+        glowPath.setAttribute('stroke', conn.color);
+        glowPath.setAttribute('stroke-width', '6');
+        glowPath.setAttribute('stroke-opacity', '0.12');
+        glowPath.setAttribute('fill', 'none');
+
+        // Main line path
+        const mainPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        mainPath.setAttribute('id', `path-${conn.from}-${conn.to}`);
+        mainPath.setAttribute('d', pathData);
+        mainPath.setAttribute('stroke', conn.color);
+        mainPath.setAttribute('stroke-width', '2.5');
+        mainPath.setAttribute('stroke-linecap', 'round');
+        mainPath.setAttribute('fill', 'none');
+
+        svgPathsGroup.appendChild(glowPath);
+        svgPathsGroup.appendChild(mainPath);
+      });
+    }
+
+    function startParticleSimulation() {
+      if (isSimulating && !continuousStream) return;
+      isSimulating = true;
+      document.getElementById('simBtnLabel').innerText = 'Simulating...';
+
+      const connections = getCurrentConnections();
+      appendLog(`Triggered flow simulation across ${connections.length} network edges.`, 'info');
+
+      // Create bursts of particles along all current edges
+      connections.forEach(conn => {
+        const pathEl = document.getElementById(`path-${conn.from}-${conn.to}`);
+        if (!pathEl) return;
+        const pathLength = pathEl.getTotalLength();
+
+        const count = 16; // Rich packet train
+        for (let i = 0; i < count; i++) {
+          const delay = (i / count) * 1200;
+          activeParticles.push({
+            pathEl: pathEl,
+            pathLength: pathLength,
+            color: conn.color,
+            speed: 0.0006 + Math.random() * 0.0002,
+            progress: -(delay / 2400),
+            size: 4 + Math.random() * 2
+          });
+        }
+      });
+
+      if (!particleAnimationId) {
+        lastTime = performance.now();
+        particleAnimationId = requestAnimationFrame(animateParticles);
+      }
+
+      // Step log milestones
+      if (currentMode === 'monitor') {
+        setTimeout(() => appendLog('Developer CLI invoked /emr-monitor on localhost.', 'step'), 300);
+        setTimeout(() => appendLog('SSH loopback tunnel securely negotiated via CCN Jump Host.', 'step'), 1100);
+        setTimeout(() => appendLog('EMR Master fanning out telemetry: YARN (8088), Spark (18080), Livy (8998).', 'step'), 2100);
+        setTimeout(() => {
+          appendLog('Converged telemetry stream live at localhost:9977 with zero AWS console credential exposure.', 'success');
+          if (!continuousStream) {
+            isSimulating = false;
+            document.getElementById('simBtnLabel').innerText = 'Simulate Flow';
+          }
+        }, 3200);
+      } else {
+        setTimeout(() => appendLog('User query in plain English issued from Claude / Skill terminal.', 'step'), 300);
+        setTimeout(() => appendLog('Livy dispatches distributed Spark SQL job inside CCN EMR private VPC.', 'step'), 1200);
+        setTimeout(() => appendLog('Spark executes scan on Iceberg S3 parquet tables. Raw data remains inside AWS perimeter.', 'step'), 2200);
+        setTimeout(() => {
+          appendLog('Aggregated analytical answer synthesized. Delivered to user laptop with zero AWS egress fee.', 'success');
+          if (!continuousStream) {
+            isSimulating = false;
+            document.getElementById('simBtnLabel').innerText = 'Simulate Flow';
+          }
+        }, 3400);
+      }
+    }
+
+    let lastTime = 0;
+    function animateParticles(currentTime) {
+      const delta = currentTime - lastTime;
+      lastTime = currentTime;
+
+      svgParticlesGroup.innerHTML = '';
+      let activeCount = 0;
+
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        p.progress += p.speed * delta;
+
+        if (p.progress >= 0 && p.progress <= 1) {
+          activeCount++;
+          const point = p.pathEl.getPointAtLength(p.progress * p.pathLength);
+
+          // Render soft ambient halo
+          const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          halo.setAttribute('cx', point.x);
+          halo.setAttribute('cy', point.y);
+          halo.setAttribute('r', p.size * 2);
+          halo.setAttribute('fill', p.color);
+          halo.setAttribute('opacity', '0.35');
+          halo.setAttribute('filter', 'url(#packet-glow)');
+          svgParticlesGroup.appendChild(halo);
+
+          // Render specular photon core
+          const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          core.setAttribute('cx', point.x);
+          core.setAttribute('cy', point.y);
+          core.setAttribute('r', p.size * 0.9);
+          core.setAttribute('fill', '#ffffff');
+          svgParticlesGroup.appendChild(core);
+        }
+
+        if (p.progress > 1) {
+          if (continuousStream) {
+            p.progress = 0; // Loop indefinitely
+          } else {
+            activeParticles.splice(i, 1);
+          }
+        }
+      }
+
+      document.getElementById('activePacketsCounter').innerText = `${activeCount} In-Flight`;
+
+      if (activeParticles.length > 0 || continuousStream) {
+        particleAnimationId = requestAnimationFrame(animateParticles);
+      } else {
+        particleAnimationId = null;
+        isSimulating = false;
+        document.getElementById('simBtnLabel').innerText = 'Simulate Flow';
+      }
+    }
+
+    let draggingNode = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    function startDragNode(e, node) {
+      draggingNode = node;
+      const rect = e.currentTarget.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+
+      window.addEventListener('mousemove', onDragNode);
+      window.addEventListener('mouseup', stopDragNode);
+    }
+
+    function onDragNode(e) {
+      if (!draggingNode) return;
+      const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+      const newX = Math.round((e.clientX - containerRect.left - dragOffset.x));
+      const newY = Math.round((e.clientY - containerRect.top - dragOffset.y));
+
+      draggingNode.x = Math.max(20, newX);
+      draggingNode.y = Math.max(20, newY);
+
+      const el = document.getElementById(`node-${draggingNode.id}`);
+      if (el) {
+        el.style.left = `${draggingNode.x}px`;
+        el.style.top = `${draggingNode.y}px`;
+      }
+      renderConnections();
+    }
+
+    function stopDragNode() {
+      draggingNode = null;
+      window.removeEventListener('mousemove', onDragNode);
+      window.removeEventListener('mouseup', stopDragNode);
+    }
+
+    // Zoom and pan functions
+    function applyTransform() {
+      nodesContainer.style.transform = `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`;
+      nodesContainer.style.transformOrigin = '0 0';
+      svgPathsGroup.style.transform = `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`;
+      svgPathsGroup.style.transformOrigin = '0 0';
+      svgParticlesGroup.style.transform = `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`;
+      svgParticlesGroup.style.transformOrigin = '0 0';
+      document.getElementById('lblZoomLevel').innerText = `${Math.round(zoomLevel * 100)}%`;
+    }
+
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+      zoomLevel = Math.min(1.8, zoomLevel + 0.15);
+      applyTransform();
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+      zoomLevel = Math.max(0.5, zoomLevel - 0.15);
+      applyTransform();
+    });
+    document.getElementById('btnFitCanvas').addEventListener('click', () => {
+      zoomLevel = 1;
+      panOffset = { x: 0, y: 0 };
+      applyTransform();
+    });
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      zoomLevel = 1;
+      panOffset = { x: 0, y: 0 };
+      applyTransform();
+      appendLog('Viewport reset to default.', 'info');
+    });
+
+    // Panning canvas background
+    const canvasContainer = document.getElementById('canvas-container');
+    canvasContainer.addEventListener('mousedown', (e) => {
+      if (e.target === canvasContainer || e.target.tagName === 'svg') {
+        isPanning = true;
+        panStart.x = e.clientX - panOffset.x;
+        panStart.y = e.clientY - panOffset.y;
+      }
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      panOffset.x = e.clientX - panStart.x;
+      panOffset.y = e.clientY - panStart.y;
+      applyTransform();
+    });
+    window.addEventListener('mouseup', () => isPanning = false);
+
+    const inspectorDrawer = document.getElementById('nodeInspectorDrawer');
+    const inspectorTitle = document.getElementById('inspectorTitle');
+    const inspectorSubtitle = document.getElementById('inspectorSubtitle');
+    const inspectorBoundary = document.getElementById('inspectorBoundary');
+    const inspectorDescription = document.getElementById('inspectorDescription');
+    const inspectorSpecs = document.getElementById('inspectorSpecs');
+    const inspectorCode = document.getElementById('inspectorCode');
+    const inspectorCompliance = document.getElementById('inspectorCompliance');
+    const inspectorIconBox = document.getElementById('inspectorIconBox');
+
+    function openInspector(node) {
+      selectedNode = node;
+      renderNodes();
+
+      inspectorTitle.innerText = node.label;
+      inspectorSubtitle.innerText = `${node.zone} · ${node.badge}`;
+      inspectorBoundary.innerHTML = `<i class="fa-solid fa-shield text-teal-600"></i> ${node.boundary}`;
+      inspectorDescription.innerText = node.desc;
+      inspectorIconBox.style.backgroundColor = node.color;
+
+      inspectorSpecs.innerHTML = node.specs.map(spec => 
+        `<div class="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-mono text-[11px]">${spec}</div>`
+      ).join('');
+
+      inspectorCode.innerText = node.code;
+
+      inspectorCompliance.innerHTML = node.compliance.map(c => 
+        `<li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px] text-emerald-500"></i> ${c}</li>`
+      ).join('');
+
+      const actionBtn = document.getElementById('btnTriggerNodeAction');
+      if (node.id === 'output-dash') {
+        actionBtn.innerText = 'Launch localhost:9977 Dashboard ↗';
+        actionBtn.className = 'w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm';
+      } else {
+        actionBtn.innerText = 'Simulate Traffic Through Node';
+        actionBtn.className = 'w-full py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm';
+      }
+
+      inspectorDrawer.classList.remove('translate-x-full');
+    }
+
+    document.getElementById('btnCloseInspector').addEventListener('click', () => {
+      inspectorDrawer.classList.add('translate-x-full');
+      selectedNode = null;
+      renderNodes();
+    });
+
+    document.getElementById('btnCopySnippet').addEventListener('click', () => {
+      const code = inspectorCode.innerText;
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      appendLog('Copied invocation snippet to clipboard.', 'info');
+    });
+
+    const dashboardModal = document.getElementById('unifiedDashboardModal');
+    let dashUpdateInterval = null;
+
+    function openUnifiedDashboardModal() {
+      dashboardModal.classList.remove('hidden');
+      dashboardModal.classList.add('flex');
+      appendLog('Opened Unified Dashboard preview at localhost:9977', 'step');
+
+      if (!dashUpdateInterval) {
+        dashUpdateInterval = setInterval(updateSimulatedDashboardMetrics, 2000);
+      }
+    }
+
+    function closeUnifiedDashboardModal() {
+      dashboardModal.classList.add('hidden');
+      dashboardModal.classList.remove('flex');
+      if (dashUpdateInterval) {
+        clearInterval(dashUpdateInterval);
+        dashUpdateInterval = null;
+      }
+    }
+
+    function updateSimulatedDashboardMetrics() {
+      // Fluctuate memory slightly
+      const memBase = 420 + Math.floor(Math.random() * 25);
+      const memPercent = Math.round((memBase / 512) * 100);
+      const kpiMemoryVal = document.getElementById('kpiMemoryVal');
+      const kpiMemoryBar = document.getElementById('kpiMemoryBar');
+      if (kpiMemoryVal && kpiMemoryBar) {
+        kpiMemoryVal.innerText = `${memBase} GB`;
+        kpiMemoryBar.style.width = `${memPercent}%`;
+      }
+
+      // Fluctuate latency
+      const latVal = 9 + Math.floor(Math.random() * 5);
+      const kpiLatencyVal = document.getElementById('kpiLatencyVal');
+      if (kpiLatencyVal) {
+        kpiLatencyVal.innerText = `${latVal} ms`;
+      }
+
+      // Progress bar advancing for running jobs
+      const progressBars = document.querySelectorAll('.job-progress-bar');
+      const progressLabels = document.querySelectorAll('.job-progress-label');
+      progressBars.forEach((bar, idx) => {
+        let currentWidth = parseInt(bar.style.width) || 50;
+        currentWidth += Math.floor(Math.random() * 4) + 1;
+        if (currentWidth > 100) currentWidth = 100;
+        bar.style.width = `${currentWidth}%`;
+        if (progressLabels[idx]) {
+          progressLabels[idx].innerText = `Stage ${idx === 0 ? '4/5' : '2/3'} (${currentWidth}%)`;
+        }
+      });
+    }
+
+    document.getElementById('btnCloseModal').addEventListener('click', closeUnifiedDashboardModal);
+    document.getElementById('btnCloseModalX').addEventListener('click', closeUnifiedDashboardModal);
+    document.getElementById('btnModalRefresh').addEventListener('click', () => {
+      updateSimulatedDashboardMetrics();
+      appendLog('Dashboard refreshed via local tunnel loopback.', 'info');
+    });
+
+    document.getElementById('btnInjectJob').addEventListener('click', () => {
+      const tbody = document.getElementById('dashJobsTableBody');
+      const newJobId = `app-20260928-09${Math.floor(150 + Math.random() * 50)}`;
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors bg-teal-50/40 dark:bg-teal-950/20';
+      tr.innerHTML = `
+        <td class="py-3 px-4 text-teal-700 dark:text-teal-400 font-bold">${newJobId}</td>
+        <td class="py-3 px-4 font-sans font-medium text-slate-800 dark:text-slate-200">
+          <div>Interactive Analytical Filter · <code>SELECT * FROM iceberg_orders</code></div>
+          <span class="text-[10px] text-teal-600 font-semibold">Injected via Livy REST port 8998</span>
+        </td>
+        <td class="py-3 px-4">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> RUNNING
+          </span>
+        </td>
+        <td class="py-3 px-4 w-44">
+          <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+            <span class="job-progress-label">Stage 1/2 (25%)</span>
+          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div class="job-progress-bar bg-teal-600 h-full rounded-full transition-all duration-700" style="width: 25%"></div>
+          </div>
+        </td>
+        <td class="py-3 px-4 text-slate-600 dark:text-slate-300">320 MB / 18 MB</td>
+        <td class="py-3 px-4 text-slate-600 dark:text-slate-300">8s</td>
+      `;
+      tbody.prepend(tr);
+      appendLog(`Livy spawned new job ${newJobId} on Spark engine.`, 'step');
+    });
+
+    document.querySelectorAll('.dash-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dash-tab').forEach(b => {
+          b.className = 'dash-tab px-3 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        });
+        btn.className = 'dash-tab active px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs font-bold';
+      });
+    });
+
+    const telemetryLogs = document.getElementById('telemetryLogs');
+    function appendLog(msg, type = 'info') {
+      const line = document.createElement('div');
+      const time = new Date().toLocaleTimeString();
+      let colorClass = 'text-slate-600 dark:text-slate-400';
+      if (type === 'step') colorClass = 'text-sky-600 dark:text-sky-400 font-semibold';
+      if (type === 'success') colorClass = 'text-emerald-600 dark:text-emerald-400 font-bold';
+      if (type === 'warn') colorClass = 'text-amber-500';
+
+      line.className = colorClass;
+      line.innerHTML = `<span class="text-slate-400 dark:text-slate-500">[${time}]</span> ${msg}`;
+      telemetryLogs.appendChild(line);
+      telemetryLogs.scrollTop = telemetryLogs.scrollHeight;
+    }
+
+    document.getElementById('btnClearLogs').addEventListener('click', () => {
+      telemetryLogs.innerHTML = '<div class="text-slate-400 dark:text-slate-500 italic">// Logs cleared.</div>';
+    });
+
+    // Architecture mode buttons
+    const btnArchMonitor = document.getElementById('btnArchMonitor');
+    const btnArchWarehouse = document.getElementById('btnArchWarehouse');
+
+    btnArchMonitor.addEventListener('click', () => {
+      currentMode = 'monitor';
+      btnArchMonitor.className = 'px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs flex items-center gap-1.5 transition-all font-bold';
+      btnArchWarehouse.className = 'px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-all';
+      selectedNode = null;
+      inspectorDrawer.classList.add('translate-x-full');
+      renderNodes();
+      appendLog('Switched architecture view to: 1. /emr-monitor', 'info');
+    });
+
+    btnArchWarehouse.addEventListener('click', () => {
+      currentMode = 'warehouse';
+      btnArchWarehouse.className = 'px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs flex items-center gap-1.5 transition-all font-bold';
+      btnArchMonitor.className = 'px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-all';
+      selectedNode = null;
+      inspectorDrawer.classList.add('translate-x-full');
+      renderNodes();
+      appendLog('Switched architecture view to: 2. /data-io-analytics-warehouse', 'info');
+    });
+
+    // Simulation controls
+    document.getElementById('btnRunSimulation').addEventListener('click', startParticleSimulation);
+    document.getElementById('btnContinuousFlow').addEventListener('click', () => {
+      continuousStream = !continuousStream;
+      const btn = document.getElementById('btnContinuousFlow');
+      if (continuousStream) {
+        btn.classList.add('bg-teal-600', 'text-white');
+        btn.classList.remove('bg-slate-200', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-200');
+        appendLog('Continuous multi-particle stream enabled.', 'step');
+        startParticleSimulation();
+      } else {
+        btn.classList.remove('bg-teal-600', 'text-white');
+        btn.classList.add('bg-slate-200', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-200');
+        appendLog('Continuous stream halted.', 'info');
+      }
+    });
+
+    document.getElementById('btnTriggerNodeAction').addEventListener('click', () => {
+      if (selectedNode && selectedNode.id === 'output-dash') {
+        openUnifiedDashboardModal();
+      } else {
+        startParticleSimulation();
+      }
+    });
+
+    // Dark/Light toggle
+    document.getElementById('btnToggleDark').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    // Initial render
+    window.onload = function() {
+      renderNodes();
+      appendLog('EMR Architecture Canvas initialized.', 'info');
+    };
+  </script>
+</body>
+</html>
