@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Comes Back to Claude — Stats Only, Never Raw Data</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #090d16;
+      overflow-x: hidden;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    canvas {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    .panel-shadow {
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex flex-col min-h-screen selection:bg-emerald-600 selection:text-white">
+
+  <!-- Executive Header & Navigation Bar -->
+  <header class="w-full bg-slate-900/90 border-b border-slate-800/90 backdrop-blur sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-cyan-400 p-[1.5px] flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <div class="h-full w-full bg-slate-900 rounded-[10px] flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          What Comes Back to Claude
+          <span class="text-slate-500 font-normal hidden sm:inline">—</span>
+          <span class="text-xs sm:text-sm font-semibold text-emerald-400">Stats Only, Never Raw Data</span>
+        </h1>
+        <p class="text-xs text-slate-400">Data boundary demonstration &bull; In-situ Spark aggregation &bull; Zero row egress</p>
+      </div>
+    </div>
+
+    <!-- Presentation Playback Controls -->
+    <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+      <button id="btnPlayPause" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white shadow-md shadow-emerald-600/30 transition flex items-center gap-1.5">
+        <svg id="playIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+        <svg id="pauseIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+        <span id="playPauseText">Pause</span>
+      </button>
+
+      <button id="btnRestart" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Replay
+      </button>
+
+      <div class="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
+      <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+        <option value="0.75">0.75x Speed</option>
+        <option value="1" selected>1.0x Speed</option>
+        <option value="1.25">1.25x Speed</option>
+        <option value="1.5">1.5x Speed</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Main Canvas Container -->
+  <main class="flex-1 flex flex-col items-center justify-start p-3 sm:p-6 w-full max-w-[1600px] mx-auto">
+    <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-2 sm:p-4 panel-shadow relative flex flex-col">
+      <!-- Top Canvas Status Pill & Scrub Bar -->
+      <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 mb-2">
+        <div class="flex items-center space-x-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="timelinePhaseLabel" class="text-xs font-semibold uppercase tracking-wider text-slate-300">Phase 0: Initializing</span>
+          <span class="text-slate-600 text-xs">|</span>
+          <span id="timelineTimer" class="text-xs mono text-emerald-400 font-bold">0.0s / 8.0s</span>
+        </div>
+
+        <!-- Jump markers for executive walkthrough -->
+        <div class="hidden md:flex items-center space-x-1.5 text-xs">
+          <button onclick="jumpToTime(0.2)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">1. Rows Load</button>
+          <button onclick="jumpToTime(1.2)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">2. Red Lock</button>
+          <button onclick="jumpToTime(2.4)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">3. Funnel Ingest</button>
+          <button onclick="jumpToTime(4.2)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">4. Stats Type-In</button>
+          <button onclick="jumpToTime(5.3)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">5. Blocked Direct</button>
+          <button onclick="jumpToTime(6.4)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">6. Claude Check</button>
+          <button onclick="jumpToTime(7.2)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition">7. Final Rule</button>
+        </div>
+      </div>
+
+      <!-- Canvas Wrapper: responsive aspect ratio with crisp high-DPI scaling -->
+      <div id="canvasContainer" class="w-full relative rounded-xl overflow-hidden bg-slate-950 shadow-inner" style="min-height: 540px; aspect-ratio: 16/9;">
+        <canvas id="splitCanvas" class="w-full h-full block"></canvas>
+      </div>
+
+      <!-- Scrubber progress slider -->
+      <div class="mt-3 px-2 flex items-center gap-3">
+        <span class="text-xs mono text-slate-500 font-medium">0s</span>
+        <input id="timelineScrubber" type="range" min="0" max="800" value="0" step="1" 
+               class="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition">
+        <span class="text-xs mono text-slate-500 font-medium">8.0s (Loop)</span>
+      </div>
+    </div>
+
+    <!-- Executive Takeaways Grid -->
+    <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+        <div class="p-2.5 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-400 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            Left: In-Cluster Isolation
+            <span class="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">50,000 Rows</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Raw Iceberg tables, customer invoices, and PII are physically retained inside private worker memory and never cross VPC borders.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+        <div class="p-2.5 rounded-lg bg-amber-950/60 border border-amber-500/30 text-amber-400 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            Center: In-Memory Funnel
+            <span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono">Aggregations</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Distributed executors execute SQL reductions (counts, null rates, timestamps) directly on the nodes.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+        <div class="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+            Right: Sanitized Metadata Egress
+            <span class="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-mono">Stats Only</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Only 4 concise summary scalars cross the Bastion boundary into Claude Code, guaranteeing zero customer data leakage.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Interactive Animation Engine -->
+  <script>
+    const DURATION = 8.0; // 8-second choreographed story sequence
+    let currentTime = 0.0;
+    let isPlaying = true;
+    let playbackSpeed = 1.0;
+    let lastTimestamp = performance.now();
+
+    const canvas = document.getElementById('splitCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
+
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const playPauseText = document.getElementById('playPauseText');
+    const btnRestart = document.getElementById('btnRestart');
+    const speedSelect = document.getElementById('speedSelect');
+    const scrubber = document.getElementById('timelineScrubber');
+    const phaseLabel = document.getElementById('timelinePhaseLabel');
+    const timerLabel = document.getElementById('timelineTimer');
+
+    // Canvas size & device pixel ratio
+    let width = 1200;
+    let height = 675;
+    let dpr = 1;
+
+    function resizeCanvas() {
+      const rect = container.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Data rows for LEFT table
+    const RAW_ROWS = [
+      { customer: "Acme Corp", amount: "$124,500.00", status: "approved", tagColor: "#10b981" },
+      { customer: "GlobalTech", amount: "$87,200.00", status: "pending", tagColor: "#f59e0b" },
+      { customer: "NovaSys", amount: "$210,000.00", status: "approved", tagColor: "#10b981" },
+      { customer: "Starlight Ltd", amount: "$64,320.00", status: "rejected", tagColor: "#ef4444" },
+      { customer: "Apex Supply", amount: "$19,450.00", status: "approved", tagColor: "#10b981" }
+    ];
+
+    // Stats for RIGHT card
+    const STATS_ITEMS = [
+      { key: "Rows:", val: "50,000", color: "#38bdf8" },
+      { key: "Null rate:", val: "0.3%", color: "#34d399" },
+      { key: "Freshness:", val: "2h ago", color: "#fbbf24" },
+      { key: "Duplicates:", val: "0", color: "#a78bfa" }
+    ];
+
+    // Animated particles flowing from Table into Funnel
+    const ingestParticles = [];
+    for (let i = 0; i < 24; i++) {
+      ingestParticles.push({
+        offset: i / 24,
+        speed: 0.45 + Math.random() * 0.25,
+        rowY: 0.15 + (i % 5) * 0.16,
+        size: 3 + Math.random() * 2,
+        alpha: 0.7 + Math.random() * 0.3
+      });
+    }
+
+    // Helper math utilities
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+    function easeOutQuad(t) {
+      return t * (2 - t);
+    }
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    function drawLockIcon(x, y, size = 18, color = '#ef4444', pulse = 0) {
+      ctx.save();
+      ctx.translate(x, y);
+      const scale = 1 + pulse * 0.15;
+      ctx.scale(scale, scale);
+
+      // Shackle
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, -size * 0.45, size * 0.42, Math.PI, 0, false);
+      ctx.stroke();
+
+      // Body
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(-size * 0.55, -size * 0.1, size * 1.1, size * 0.9, 4);
+      ctx.fill();
+
+      // Keyhole
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, size * 0.25, size * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(-size * 0.06, size * 0.25, size * 0.12, size * 0.26);
+
+      ctx.restore();
+    }
+
+    function drawCheckBadge(x, y, size = 18, color = '#10b981', pulse = 0) {
+      ctx.save();
+      ctx.translate(x, y);
+      const scale = 1 + pulse * 0.12;
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Checkmark tick
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.45, -size * 0.05);
+      ctx.lineTo(-size * 0.1, size * 0.35);
+      ctx.lineTo(size * 0.48, -size * 0.35);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function render(time) {
+      // Clear canvas with crisp dark backdrop
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, width, height);
+
+      // Geometric background grid
+      ctx.save();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.8;
+      ctx.globalAlpha = 0.45;
+      const step = 32;
+      for (let x = 0; x < width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Master Top Header inside canvas
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 22px Inter, sans-serif';
+      ctx.fillText("What Comes Back to Claude — Stats Only, Never Raw Data", width / 2, 40);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 12.5px Inter, sans-serif';
+      ctx.fillText("Executive Demonstration: In-VPC Data Encapsulation vs. Sanitized Output", width / 2, 60);
+      ctx.restore();
+
+      // Compute split-screen geometry
+      const topY = 85;
+      const bottomY = height - 70;
+      const availableH = bottomY - topY;
+
+      const leftW = width * 0.38;
+      const rightW = width * 0.32;
+      const centerW = width - (leftW + rightW);
+
+      const leftBox = { x: width * 0.03, y: topY, w: leftW, h: availableH };
+      const centerBox = { x: leftBox.x + leftBox.w, y: topY, w: centerW, h: availableH };
+      const rightBox = { x: centerBox.x + centerBox.w + width * 0.02, y: topY, w: rightW - width * 0.03, h: availableH };
+
+      // Subtle boundary backdrop highlights
+      ctx.save();
+      // Left side backdrop (Muted / Grey = contained)
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.45)';
+      ctx.beginPath();
+      ctx.roundRect(leftBox.x, leftBox.y, leftBox.w, leftBox.h, 16);
+      ctx.fill();
+
+      // Right side backdrop (Safe green glow)
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.22)';
+      ctx.beginPath();
+      ctx.roundRect(rightBox.x, rightBox.y, rightBox.w, rightBox.h, 16);
+      ctx.fill();
+      ctx.restore();
+
+      // ------------------------------------------------------------------
+      // LEFT SIDE — "Inside EMR Cluster" (stays inside, never leaves)
+      // ------------------------------------------------------------------
+      const leftFade = clamp(time / 0.8, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = leftFade;
+
+      // Section Header Tag
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '800 13px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText("INSIDE EMR CLUSTER", leftBox.x + 12, leftBox.y + 24);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '600 10.5px Inter, sans-serif';
+      ctx.fillText("(Stays inside VPC • Never leaves cluster memory)", leftBox.x + 168, leftBox.y + 24);
+
+      // Raw Table Outer Container
+      const tblX = leftBox.x + 10;
+      const tblY = leftBox.y + 38;
+      const tblW = leftBox.w - 20;
+      const tblH = leftBox.h - 52;
+
+      // Red lock pulse effect (starts at 1.0s)
+      const lockPulse = (time >= 1.0 && time <= 3.2) ? Math.sin((time - 1.0) * 8) * 0.5 + 0.5 : 0;
+      const borderStrokeColor = lockPulse > 0 ? `rgba(239, 68, 68, ${0.4 + 0.6 * lockPulse})` : '#334155';
+      const borderStrokeWidth = lockPulse > 0 ? 2.5 : 1.5;
+
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = borderStrokeColor;
+      ctx.lineWidth = borderStrokeWidth;
+      ctx.beginPath();
+      ctx.roundRect(tblX, tblY, tblW, tblH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Top title bar for raw table
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(tblX, tblY, tblW, 36, [12, 12, 0, 0]);
+      ctx.fill();
+
+      // Red Lock on border / top header
+      drawLockIcon(tblX + 22, tblY + 18, 14, '#ef4444', lockPulse);
+
+      ctx.fillStyle = '#f87171';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText("Raw Iceberg Table — stays inside EMR", tblX + 38, tblY + 22);
+
+      // Table Column Headers
+      const colHeaderY = tblY + 56;
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 11px JetBrains Mono, monospace';
+      const colX1 = tblX + 16;
+      const colX2 = tblX + tblW * 0.44;
+      const colX3 = tblX + tblW * 0.77;
+
+      ctx.fillText("customer_name", colX1, colHeaderY);
+      ctx.fillText("invoice_amount", colX2, colHeaderY);
+      ctx.fillText("status", colX3, colHeaderY);
+
+      // Header separator line
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tblX + 12, colHeaderY + 8);
+      ctx.lineTo(tblX + tblW - 12, colHeaderY + 8);
+      ctx.stroke();
+
+      // Row-by-row entrance animation (0s - 1s)
+      const rowBaseY = colHeaderY + 24;
+      const rowHeight = 32;
+
+      RAW_ROWS.forEach((r, idx) => {
+        // Staggered fade in: 0.1s, 0.25s, 0.4s, 0.55s, 0.7s
+        const rowTrigger = 0.1 + idx * 0.15;
+        const rowAlpha = clamp((time - rowTrigger) / 0.25, 0, 1);
+
+        if (rowAlpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = rowAlpha;
+          const curY = rowBaseY + idx * rowHeight;
+
+          // Alternate zebra striping
+          if (idx % 2 === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.fillRect(tblX + 8, curY - 14, tblW - 16, rowHeight - 2);
+          }
+
+          // Customer
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '600 11.5px Inter, sans-serif';
+          ctx.fillText(r.customer, colX1, curY);
+
+          // Amount
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = '500 11.5px JetBrains Mono, monospace';
+          ctx.fillText(r.amount, colX2, curY);
+
+          // Status Badge
+          ctx.fillStyle = r.tagColor;
+          ctx.font = 'bold 10px JetBrains Mono, monospace';
+          ctx.fillText(r.status, colX3, curY);
+          ctx.restore();
+        }
+      });
+
+      // Ellipsis row & 50,000 indicator
+      if (time >= 0.85) {
+        const dotAlpha = clamp((time - 0.85) / 0.3, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = dotAlpha;
+        const dotsY = rowBaseY + RAW_ROWS.length * rowHeight - 2;
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 14px JetBrains Mono, monospace';
+        ctx.fillText(". . .", colX1 + 10, dotsY);
+        ctx.fillText(". . .", colX2 + 10, dotsY);
+        ctx.fillText(". . .", colX3 + 6, dotsY);
+
+        // Heavy Volume Highlight Box
+        const countBoxY = dotsY + 16;
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(tblX + 16, countBoxY, tblW - 32, 28, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#fca5a5';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
+        ctx.fillText("⚡ (50,000 raw customer records in storage)", tblX + 28, countBoxY + 18);
+        ctx.restore();
+      }
+
+      // (1s - 2s) Callout appears: "50,000 rows — never sent out"
+      if (time >= 1.0) {
+        const calloutAlpha = clamp((time - 1.0) / 0.4, 0, 1);
+        const calloutScale = 0.95 + easeOutQuad(calloutAlpha) * 0.05;
+
+        ctx.save();
+        ctx.globalAlpha = calloutAlpha;
+        const calloutY = tblY + tblH - 36;
+        const calloutW = tblW - 36;
+        const calloutX = tblX + 18;
+
+        ctx.translate(calloutX + calloutW / 2, calloutY);
+        ctx.scale(calloutScale, calloutScale);
+        ctx.translate(-(calloutX + calloutW / 2), -calloutY);
+
+        ctx.fillStyle = '#7f1d1d';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(calloutX, calloutY, calloutW, 28, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#fecaca';
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("🔒 50,000 rows — never sent out of VPC", calloutX + calloutW / 2, calloutY + 18);
+        ctx.restore();
+      }
+      ctx.restore(); // end left side
+
+      // ------------------------------------------------------------------
+      // CENTER — Spark Aggregation Funnel Step (2s - 4s)
+      // ------------------------------------------------------------------
+      const centerAlpha = clamp((time - 1.6) / 0.6, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = centerAlpha;
+
+      const funnelCenterX = centerBox.x + centerBox.w * 0.5;
+      const funnelCenterY = centerBox.y + centerBox.h * 0.44;
+      const funnelTopW = centerBox.w * 0.82;
+      const funnelNeckW = 32;
+      const funnelH = 135;
+
+      // Ingest Particles (Rows streaming into funnel from left table)
+      if (time >= 2.0) {
+        const pStartX = tblX + tblW;
+        const pEndX = funnelCenterX - funnelNeckW / 2;
+
+        ingestParticles.forEach((p, idx) => {
+          const currentT = (p.offset + (time - 2.0) * p.speed) % 1.0;
+          const px = pStartX + currentT * (pEndX - pStartX);
+          const py = (tblY + 60 + p.rowY * (tblH - 120)) * (1 - currentT) + (funnelCenterY) * currentT;
+
+          ctx.beginPath();
+          ctx.arc(px, py, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = '#f97316';
+          ctx.shadowColor = '#fb923c';
+          ctx.shadowBlur = 6;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+      }
+
+      // Funnel Graphic (Orange Spark theme)
+      const topYF = funnelCenterY - funnelH / 2;
+      const botYF = funnelCenterY + funnelH / 2;
+
+      ctx.beginPath();
+      ctx.moveTo(funnelCenterX - funnelTopW / 2, topYF);
+      ctx.lineTo(funnelCenterX + funnelTopW / 2, topYF);
+      ctx.lineTo(funnelCenterX + funnelNeckW / 2, botYF - 25);
+      ctx.lineTo(funnelCenterX + funnelNeckW / 2, botYF);
+      ctx.lineTo(funnelCenterX - funnelNeckW / 2, botYF);
+      ctx.lineTo(funnelCenterX - funnelNeckW / 2, botYF - 25);
+      ctx.closePath();
+
+      // Glowing gradient
+      const funnelGrad = ctx.createLinearGradient(funnelCenterX, topYF, funnelCenterX, botYF);
+      funnelGrad.addColorStop(0, 'rgba(249, 115, 22, 0.28)');
+      funnelGrad.addColorStop(0.7, 'rgba(234, 88, 12, 0.45)');
+      funnelGrad.addColorStop(1, 'rgba(194, 65, 12, 0.7)');
+
+      ctx.fillStyle = funnelGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // Funnel Labels
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fed7aa';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillText("Spark SQL Aggregation", funnelCenterX, topYF + 22);
+
+      ctx.fillStyle = '#ffedd5';
+      ctx.font = '700 10.5px JetBrains Mono, monospace';
+      ctx.fillText("COUNT(*), AVG(), MAX()", funnelCenterX, topYF + 40);
+
+      ctx.fillStyle = '#fdba74';
+      ctx.font = '600 9.5px Inter, sans-serif';
+      ctx.fillText("No LIMIT on raw rows", funnelCenterX, topYF + 58);
+
+      // Rotating gear inside funnel indicating active reduction
+      if (time >= 2.0) {
+        const spin = (time - 2.0) * 4;
+        ctx.save();
+        ctx.translate(funnelCenterX, topYF + 82);
+        ctx.rotate(spin);
+        ctx.strokeStyle = '#ffedd5';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -8, 16, 16);
+        ctx.rotate(Math.PI / 4);
+        ctx.strokeRect(-8, -8, 16, 16);
+        ctx.restore();
+      }
+
+      // Funnel Output Egress: Instead of rows, 4 glowing stat dots emerge
+      const dotsStartX = funnelCenterX + funnelNeckW / 2 + 5;
+      const targetCardX = rightBox.x + 20;
+
+      // 4 Stat Dots traveling towards stats card (Step 3: 2s - 4s, Step 4: 4s - 5s)
+      STATS_ITEMS.forEach((item, i) => {
+        const dotStartT = 3.0 + i * 0.28;
+        if (time >= dotStartT) {
+          const travelProg = clamp((time - dotStartT) / 0.8, 0, 1);
+          const easeProg = easeInOutQuad(travelProg);
+
+          const dotX = dotsStartX + easeProg * (targetCardX - dotsStartX);
+          const targetY = rightBox.y + 88 + i * 36;
+          const dotY = botYF * (1 - easeProg) + targetY * easeProg;
+
+          // Draw Glowing Egress Particle
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = item.color;
+          ctx.shadowColor = item.color;
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      });
+
+      ctx.restore(); // end center
+
+      // ------------------------------------------------------------------
+      // RIGHT SIDE — "Claude Sees" (what actually crosses the tunnel)
+      // ------------------------------------------------------------------
+      const rightAlpha = clamp((time - 2.8) / 0.8, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = rightAlpha;
+
+      // Section Header Tag
+      ctx.fillStyle = '#34d399';
+      ctx.font = '800 13px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText("CLAUDE SEES", rightBox.x + 10, rightBox.y + 24);
+
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = '600 10.5px Inter, sans-serif';
+      ctx.fillText("(What actually crosses the SSH tunnel)", rightBox.x + 116, rightBox.y + 24);
+
+      // Clean Stats Card
+      const cardX = rightBox.x + 8;
+      const cardY = rightBox.y + 38;
+      const cardW = rightBox.w - 16;
+      const cardH = rightBox.h - 52;
+
+      // Checkmark pulse (6s - 7s)
+      const checkPulse = (time >= 6.0 && time <= 7.5) ? Math.sin((time - 6.0) * 8) * 0.5 + 0.5 : 0;
+
+      ctx.fillStyle = '#0f291e';
+      ctx.strokeStyle = checkPulse > 0 ? `rgba(52, 211, 153, ${0.6 + 0.4 * checkPulse})` : '#059669';
+      ctx.lineWidth = checkPulse > 0 ? 2.5 : 1.8;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Top title bar for stats card
+      ctx.fillStyle = '#064e3b';
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, 36, [12, 12, 0, 0]);
+      ctx.fill();
+
+      // Green Checkmark Badge on card header
+      drawCheckBadge(cardX + 22, cardY + 18, 11, '#10b981', checkPulse);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12.5px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText("Table: invoices", cardX + 38, cardY + 22);
+
+      // Sub-label below header
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 10px JetBrains Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText("ONLY AGGREGATED STATS", cardX + cardW - 14, cardY + 22);
+
+      // Typing in the 4 Stat rows one by one (4s - 5s)
+      const statStartY = cardY + 70;
+      const statRowH = 36;
+
+      STATS_ITEMS.forEach((stat, i) => {
+        // Typing start time: 4.0s, 4.25s, 4.5s, 4.75s
+        const typeStart = 4.0 + i * 0.25;
+        if (time >= typeStart) {
+          const typeDuration = 0.22;
+          const typeProgress = clamp((time - typeStart) / typeDuration, 0, 1);
+
+          const curStatY = statStartY + i * statRowH;
+
+          // Inner row container box
+          ctx.fillStyle = 'rgba(6, 95, 70, 0.25)';
+          ctx.strokeStyle = 'rgba(52, 211, 153, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(cardX + 14, curStatY - 18, cardW - 28, 28, 6);
+          ctx.fill();
+          ctx.stroke();
+
+          // Key text
+          ctx.fillStyle = '#a7f3d0';
+          ctx.font = '600 12px JetBrains Mono, monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(stat.key, cardX + 24, curStatY);
+
+          // Value with typing character slice
+          const valChars = Math.ceil(stat.val.length * typeProgress);
+          const visibleVal = stat.val.slice(0, valChars);
+
+          ctx.fillStyle = stat.color;
+          ctx.font = 'bold 13px JetBrains Mono, monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(visibleVal, cardX + cardW - 24, curStatY);
+
+          // Typing cursor blinking
+          if (typeProgress < 1.0) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(cardX + cardW - 22, curStatY - 11, 2, 13);
+          }
+        }
+      });
+
+      // Bottom label on stats card: "Only aggregated stats returned"
+      if (time >= 5.0) {
+        const tagAlpha = clamp((time - 5.0) / 0.4, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = tagAlpha;
+
+        const tagY = cardY + cardH - 36;
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(cardX + 14, tagY, cardW - 28, 26, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#a7f3d0';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("✅ Only aggregated stats returned to context", cardX + cardW / 2, tagY + 17);
+        ctx.restore();
+      }
+
+      ctx.restore(); // end right side
+
+      // ------------------------------------------------------------------
+      // STEP 5: LARGE RED X with animation sliding over raw path (5s - 6s)
+      // ------------------------------------------------------------------
+      if (time >= 5.0) {
+        const blockAlpha = clamp((time - 5.0) / 0.4, 0, 1);
+        const slideProg = easeOutQuad(blockAlpha);
+
+        ctx.save();
+        ctx.globalAlpha = blockAlpha;
+
+        // Curved dashed direct bridge line at the top, crossed out
+        const startRaw = { x: tblX + tblW * 0.7, y: tblY };
+        const endDest = { x: cardX + cardW * 0.3, y: cardY };
+        const cpTopY = topY - 18;
+
+        ctx.beginPath();
+        ctx.moveTo(startRaw.x, startRaw.y);
+        ctx.bezierCurveTo(startRaw.x + 40, cpTopY, endDest.x - 40, cpTopY, endDest.x, endDest.y);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Animated red blocker badge that slides down over the center-top
+        const blockerX = (startRaw.x + endDest.x) / 2;
+        const targetBlockerY = topY + 2;
+        const startBlockerY = topY - 30;
+        const blockerY = startBlockerY + slideProg * (targetBlockerY - startBlockerY);
+
+        const bW = 200;
+        const bH = 34;
+
+        ctx.fillStyle = '#450a0a';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(blockerX - bW / 2, blockerY - bH / 2, bW, bH, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Large Red X Icon
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        const xS = 7;
+        const iconX = blockerX - bW / 2 + 20;
+        ctx.beginPath();
+        ctx.moveTo(iconX - xS, blockerY - xS);
+        ctx.lineTo(iconX + xS, blockerY + xS);
+        ctx.moveTo(iconX + xS, blockerY - xS);
+        ctx.lineTo(iconX - xS, blockerY + xS);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fecaca';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText("Raw rows — BLOCKED", blockerX - bW / 2 + 36, blockerY + 4);
+
+        ctx.restore();
+      }
+
+      // ------------------------------------------------------------------
+      // STEP 6: Bottom caption (6s - 7s) & FINAL FRAME CALLOUT (7s+)
+      // ------------------------------------------------------------------
+      if (time >= 6.0) {
+        const bottomAlpha = clamp((time - 6.0) / 0.5, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = bottomAlpha;
+
+        // Bottom Executive Caption
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#a7f3d0';
+        ctx.font = '600 13px Inter, sans-serif';
+        ctx.fillText("Claude assists on statistics — not on your customers' data", width / 2, height - 48);
+        ctx.restore();
+      }
+
+      if (time >= 6.8) {
+        const finalAlpha = clamp((time - 6.8) / 0.5, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = finalAlpha;
+
+        // Executive Final Frame Banner
+        const bannerW = Math.min(520, width * 0.55);
+        const bannerH = 34;
+        const bannerX = width / 2;
+        const bannerY = height - 22;
+
+        ctx.fillStyle = '#064e3b';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(bannerX - bannerW / 2, bannerY - bannerH / 2, bannerW, bannerH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("✨ “The data never moves. The math does.”", bannerX, bannerY + 4);
+        ctx.restore();
+      }
+    }
+
+    function updateTelemetry(time) {
+      timerLabel.textContent = `${time.toFixed(1)}s / 8.0s`;
+      scrubber.value = Math.floor((time / DURATION) * 800);
+
+      if (time < 1.0) {
+        phaseLabel.textContent = "Phase 1: Raw Table Loading (In-Cluster)";
+      } else if (time < 2.0) {
+        phaseLabel.textContent = "Phase 2: In-VPC Red Lock Enforced";
+      } else if (time < 4.0) {
+        phaseLabel.textContent = "Phase 3: Spark SQL In-Memory Funnel";
+      } else if (time < 5.0) {
+        phaseLabel.textContent = "Phase 4: Stats Egress to Claude Code";
+      } else if (time < 6.0) {
+        phaseLabel.textContent = "Phase 5: Direct Row Transit Blocked";
+      } else if (time < 7.0) {
+        phaseLabel.textContent = "Phase 6: Verified Statistics Clearance";
+      } else {
+        phaseLabel.textContent = "Phase 7: The Data Never Moves. The Math Does.";
+      }
+    }
+
+    function animate(now) {
+      const dt = (now - lastTimestamp) / 1000;
+      lastTimestamp = now;
+
+      if (isPlaying) {
+        currentTime += dt * playbackSpeed;
+        if (currentTime > DURATION + 1.8) {
+          currentTime = 0.0; // Loop cleanly
+        }
+      }
+
+      render(currentTime);
+      updateTelemetry(currentTime);
+
+      requestAnimationFrame(animate);
+    }
+
+    // Play / Pause toggle
+    btnPlayPause.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        playPauseText.textContent = "Pause";
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playPauseText.textContent = "Play";
+      }
+    });
+
+    // Replay button
+    btnRestart.addEventListener('click', () => {
+      currentTime = 0;
+      isPlaying = true;
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+      playPauseText.textContent = "Pause";
+    });
+
+    // Playback Speed
+    speedSelect.addEventListener('change', (e) => {
+      playbackSpeed = parseFloat(e.target.value);
+    });
+
+    // Scrubber drag
+    scrubber.addEventListener('input', (e) => {
+      currentTime = (parseFloat(e.target.value) / 800) * DURATION;
+      render(currentTime);
+      updateTelemetry(currentTime);
+    });
+
+    // Instant time jumps
+    window.jumpToTime = function(t) {
+      currentTime = t;
+      render(currentTime);
+      updateTelemetry(currentTime);
+    };
+
+    // Keyboard Shortcuts (Space = Toggle, Left/Right = 0.5s Scrub)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        btnPlayPause.click();
+      } else if (e.code === 'ArrowRight') {
+        currentTime = Math.min(DURATION, currentTime + 0.5);
+      } else if (e.code === 'ArrowLeft') {
+        currentTime = Math.max(0, currentTime - 0.5);
+      }
+    });
+
+    // Window load trigger
+    window.onload = function () {
+      resizeCanvas();
+      lastTimestamp = performance.now();
+      requestAnimationFrame(animate);
+    };
+  </script>
+</body>
+</html>

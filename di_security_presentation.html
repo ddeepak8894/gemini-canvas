@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Insights Platform — Security Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #080c14;
+      --panel:   #0d1526;
+      --border:  rgba(255,255,255,0.08);
+      --blue:    #3b82f6;
+      --green:   #10b981;
+      --amber:   #f59e0b;
+      --text:    #f1f5f9;
+      --muted:   #94a3b8;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--navy);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 58px;
+      background: rgba(13,21,38,0.96);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: relative;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo svg { width: 18px; height: 18px; color: white; }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: white;
+    }
+    .brand-text p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    /* ── Tab bar ── */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+      background: none;
+      outline: none;
+    }
+    .tab:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+    }
+    .tab.active {
+      color: white;
+      background: rgba(59,130,246,0.15);
+      border-color: rgba(59,130,246,0.35);
+    }
+    .tab .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tab[data-idx="0"] .dot { background: #3b82f6; }
+    .tab[data-idx="1"] .dot { background: #10b981; }
+    .tab[data-idx="2"] .dot { background: #f59e0b; }
+    .tab[data-idx="0"].active { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
+    .tab[data-idx="1"].active { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.10); }
+    .tab[data-idx="2"].active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.10); }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      transition: all 0.15s;
+      outline: none;
+    }
+    .btn:hover { color: white; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
+    .btn svg { width: 13px; height: 13px; }
+
+    .btn-prev, .btn-next {
+      padding: 6px 10px;
+    }
+
+    .slide-counter {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 44px;
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Stage ── */
+    .stage {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #080c14;
+    }
+
+    /* ── Slide label pill ── */
+    .slide-label {
+      position: absolute;
+      bottom: 18px;
+      right: 22px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(13,21,38,0.88);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      z-index: 10;
+      color: var(--muted);
+    }
+    .slide-label .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+
+    /* ── Fullscreen overlay ── */
+    body:fullscreen header { display: none; }
+    body:fullscreen .stage { height: 100vh; }
+
+    /* ── Keyboard hint ── */
+    .hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: rgba(148,163,184,0.45);
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    /* page layout */
+    body { display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Data Insights Platform</h1>
+        <p>Security Architecture · Leadership Presentation · 2026</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <nav id="tabs">
+      <button class="tab active" data-idx="0">
+        <span class="dot"></span>
+        Infrastructure Security Flow
+      </button>
+      <button class="tab" data-idx="1">
+        <span class="dot"></span>
+        Stats Only — No Raw Data
+      </button>
+      <button class="tab" data-idx="2">
+        <span class="dot"></span>
+        Stats Only — Enhanced
+      </button>
+    </nav>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn btn-prev" id="prevBtn" title="Previous (←)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <span class="slide-counter" id="counter">1 / 3</span>
+      <button class="btn btn-next" id="nextBtn" title="Next (→)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+      <button class="btn" id="fsBtn" title="Fullscreen (F)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+        </svg>
+        Fullscreen
+      </button>
+    </div>
+  </header>
+
+  <!-- Stage -->
+  <div class="stage" id="stage">
+
+    <!-- Slide 0 -->
+    <div class="slide active" id="slide-0">
+      <iframe src="claude_emr_security_flowchart.html"
+              title="Claude + EMR Infrastructure Security Flow"
+              loading="eager"></iframe>
+      <div class="slide-label">
+        <span class="badge-dot" style="background:#3b82f6"></span>
+        Slide 1 · Infrastructure Security Flow
+      </div>
+    </div>
+
+    <!-- Slide 1 -->
+    <div class="slide" id="slide-1">
+      <iframe src="claude_stats_only_visualization.html"
+              title="Stats Only — Never Raw Data"
+              loading="lazy"></iframe>
+      <div class="slide-label">
+        <span class="badge-dot" style="background:#10b981"></span>
+        Slide 2 · Stats Only — No Raw Data
+      </div>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="slide" id="slide-2">
+      <iframe src="claude_stats_only_visualization_v2.html"
+              title="Stats Only — Enhanced Version"
+              loading="lazy"></iframe>
+      <div class="slide-label">
+        <span class="badge-dot" style="background:#f59e0b"></span>
+        Slide 3 · Stats Only — Enhanced
+      </div>
+    </div>
+
+  </div>
+
+  <div class="hint" id="hint">← → navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; R replay</div>
+
+  <script>
+    const SLIDES = 3;
+    let current = 0;
+
+    const slides  = document.querySelectorAll('.slide');
+    const tabs    = document.querySelectorAll('.tab');
+    const counter = document.getElementById('counter');
+    const hint    = document.getElementById('hint');
+
+    function goTo(idx) {
+      slides[current].classList.remove('active');
+      tabs[current].classList.remove('active');
+      current = (idx + SLIDES) % SLIDES;
+      slides[current].classList.add('active');
+      tabs[current].classList.add('active');
+      counter.textContent = `${current + 1} / ${SLIDES}`;
+    }
+
+    // Tab clicks
+    tabs.forEach(t => t.addEventListener('click', () => goTo(+t.dataset.idx)));
+
+    // Prev / Next
+    document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+
+    // Fullscreen
+    document.getElementById('fsBtn').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  { e.preventDefault(); goTo(current + 1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    { e.preventDefault(); goTo(current - 1); }
+      if (e.key === 'f' || e.key === 'F') document.getElementById('fsBtn').click();
+      if (e.key === 'r' || e.key === 'R') {
+        const iframe = slides[current].querySelector('iframe');
+        if (iframe) { iframe.src = iframe.src; }
+      }
+      if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
+    });
+
+    // Hide hint after 6s
+    setTimeout(() => { hint.style.opacity = '0'; hint.style.transition = 'opacity 1s'; }, 6000);
+  </script>
+</body>
+</html>
