@@ -108,12 +108,14 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .tab[data-idx="0"] .dot { background: #3b82f6; }
-    .tab[data-idx="1"] .dot { background: #10b981; }
-    .tab[data-idx="2"] .dot { background: #f59e0b; }
-    .tab[data-idx="0"].active { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
-    .tab[data-idx="1"].active { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.10); }
-    .tab[data-idx="2"].active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.10); }
+    .tab[data-idx="0"] .dot { background: #a78bfa; }
+    .tab[data-idx="1"] .dot { background: #3b82f6; }
+    .tab[data-idx="2"] .dot { background: #10b981; }
+    .tab[data-idx="3"] .dot { background: #f59e0b; }
+    .tab[data-idx="0"].active { border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.12); }
+    .tab[data-idx="1"].active { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
+    .tab[data-idx="2"].active { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.10); }
+    .tab[data-idx="3"].active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.10); }
 
     /* ── Controls ── */
     .controls {
@@ -241,13 +243,17 @@
     <nav id="tabs">
       <button class="tab active" data-idx="0">
         <span class="dot"></span>
-        Infrastructure Security Flow
+        Platform Architecture
       </button>
       <button class="tab" data-idx="1">
         <span class="dot"></span>
-        Stats Only — No Raw Data
+        Infrastructure Security Flow
       </button>
       <button class="tab" data-idx="2">
+        <span class="dot"></span>
+        Stats Only — No Raw Data
+      </button>
+      <button class="tab" data-idx="3">
         <span class="dot"></span>
         Stats Only — Enhanced
       </button>
@@ -260,7 +266,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
-      <span class="slide-counter" id="counter">1 / 3</span>
+      <span class="slide-counter" id="counter">1 / 4</span>
       <button class="btn btn-next" id="nextBtn" title="Next (→)">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -279,36 +285,47 @@
   <!-- Stage -->
   <div class="stage" id="stage">
 
-    <!-- Slide 0 -->
+    <!-- Slide 0 — Platform Architecture (START HERE) -->
     <div class="slide active" id="slide-0">
-      <iframe src="claude_emr_security_flowchart.html"
-              title="Claude + EMR Infrastructure Security Flow"
+      <iframe src="data_insights_ingestion_platform_architecture.html"
+              title="Data Insights Ingestion Platform Architecture"
               loading="eager"></iframe>
       <div class="slide-label">
-        <span class="badge-dot" style="background:#3b82f6"></span>
-        Slide 1 · Infrastructure Security Flow
+        <span class="badge-dot" style="background:#a78bfa"></span>
+        Slide 1 · Platform Architecture
       </div>
     </div>
 
-    <!-- Slide 1 -->
+    <!-- Slide 1 — Security Flow -->
     <div class="slide" id="slide-1">
+      <iframe src="claude_emr_security_flowchart.html"
+              title="Claude + EMR Infrastructure Security Flow"
+              loading="lazy"></iframe>
+      <div class="slide-label">
+        <span class="badge-dot" style="background:#3b82f6"></span>
+        Slide 2 · Infrastructure Security Flow
+      </div>
+    </div>
+
+    <!-- Slide 2 — Stats Only v1 -->
+    <div class="slide" id="slide-2">
       <iframe src="claude_stats_only_visualization.html"
               title="Stats Only — Never Raw Data"
               loading="lazy"></iframe>
       <div class="slide-label">
         <span class="badge-dot" style="background:#10b981"></span>
-        Slide 2 · Stats Only — No Raw Data
+        Slide 3 · Stats Only — No Raw Data
       </div>
     </div>
 
-    <!-- Slide 2 -->
-    <div class="slide" id="slide-2">
+    <!-- Slide 3 — Stats Only v2 -->
+    <div class="slide" id="slide-3">
       <iframe src="claude_stats_only_visualization_v2.html"
               title="Stats Only — Enhanced Version"
               loading="lazy"></iframe>
       <div class="slide-label">
         <span class="badge-dot" style="background:#f59e0b"></span>
-        Slide 3 · Stats Only — Enhanced
+        Slide 4 · Stats Only — Enhanced
       </div>
     </div>
 
@@ -317,7 +334,7 @@
   <div class="hint" id="hint">← → navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; R replay</div>
 
   <script>
-    const SLIDES = 3;
+    const SLIDES = 4;
     let current = 0;
 
     const slides  = document.querySelectorAll('.slide');
@@ -359,7 +376,7 @@
         const iframe = slides[current].querySelector('iframe');
         if (iframe) { iframe.src = iframe.src; }
       }
-      if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
+      if (e.key >= '1' && e.key <= '4') goTo(+e.key - 1);
     });
 
     // Hide hint after 6s
