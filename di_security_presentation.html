@@ -112,10 +112,12 @@
     .tab[data-idx="1"] .dot { background: #3b82f6; }
     .tab[data-idx="2"] .dot { background: #10b981; }
     .tab[data-idx="3"] .dot { background: #f59e0b; }
+    .tab[data-idx="4"] .dot { background: #e11d48; }
     .tab[data-idx="0"].active { border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.12); }
     .tab[data-idx="1"].active { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
     .tab[data-idx="2"].active { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.10); }
     .tab[data-idx="3"].active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.10); }
+    .tab[data-idx="4"].active { border-color: rgba(225,29,72,0.4);  background: rgba(225,29,72,0.10); }
 
     /* ── Controls ── */
     .controls {
@@ -257,6 +259,10 @@
         <span class="dot"></span>
         Stats Only — Enhanced
       </button>
+      <button class="tab" data-idx="4">
+        <span class="dot"></span>
+        DQ Report — bom
+      </button>
     </nav>
 
     <!-- Controls -->
@@ -266,7 +272,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
-      <span class="slide-counter" id="counter">1 / 4</span>
+      <span class="slide-counter" id="counter">1 / 5</span>
       <button class="btn btn-next" id="nextBtn" title="Next (→)">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -329,12 +335,23 @@
       </div>
     </div>
 
+    <!-- Slide 4 — Live DQ Report -->
+    <div class="slide" id="slide-4">
+      <iframe src="dq_report_bom_r43_item_service_demo.html"
+              title="DQ Report — bom / r43_item_service_demo"
+              loading="lazy"></iframe>
+      <div class="slide-label">
+        <span class="badge-dot" style="background:#e11d48"></span>
+        Slide 5 · DQ Report — bom · r43_item_service_demo · dev
+      </div>
+    </div>
+
   </div>
 
   <div class="hint" id="hint">← → navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; R replay</div>
 
   <script>
-    const SLIDES = 4;
+    const SLIDES = 5;
     let current = 0;
 
     const slides  = document.querySelectorAll('.slide');
@@ -376,7 +393,7 @@
         const iframe = slides[current].querySelector('iframe');
         if (iframe) { iframe.src = iframe.src; }
       }
-      if (e.key >= '1' && e.key <= '4') goTo(+e.key - 1);
+      if (e.key >= '1' && e.key <= '5') goTo(+e.key - 1);
     });
 
     // Hide hint after 6s

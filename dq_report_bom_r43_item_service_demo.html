@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">DQ Report</title>
+<style>
+:root{--pass:#2da44e;--warn:#d97706;--fail:#e53e3e;--error:#c0392b;--skip:#8c959f;
+  --bg:#f6f8fa;--card:#fff;--hdr:#0d1117;--border:#d0d7de;--txt:#24292f;--txt2:#656d76}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+
+/* ── Header ── */
+.hdr{background:var(--hdr);color:#e6edf3;padding:18px 32px}
+.hdr-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.hdr h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:5px}
+.hdr-meta{font-size:12px;color:#8b949e;display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.hdr-meta b{color:#e6edf3}
+.hdr-stats{display:flex;gap:20px;font-size:12px;color:#8b949e;flex-wrap:wrap}
+.hdr-stats span b{color:#e6edf3}
+.verdict{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;align-self:flex-start}
+.verdict.passed{background:#1a4731;color:#3fb950;border:1px solid #238636}
+.verdict.warned{background:#341a00;color:#d29922;border:1px solid #9e6a03}
+.verdict.failed{background:#490202;color:#f85149;border:1px solid #da3633}
+
+/* ── Filter bar ── */
+.fbar{background:#fff;border-bottom:1px solid var(--border);padding:8px 32px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.flabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2);margin-right:2px}
+.fsep{width:1px;height:20px;background:var(--border);margin:0 6px}
+.pill{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--txt2);user-select:none;transition:all .15s}
+.pill:hover{background:#f3f4f6}
+.pill.active{color:#fff;border-color:transparent}
+.pill.active.s-all{background:#24292f}.pill.active.s-pass{background:var(--pass)}
+.pill.active.s-warn{background:var(--warn)}.pill.active.s-fail{background:var(--fail)}
+.pill.active.s-error{background:var(--error)}.pill.active.s-skip{background:var(--skip)}
+.pill.active.c-all{background:#0969da}.pill.active.c-check{background:#0969da}
+.search{margin-left:auto;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:200px;outline:none}
+.search:focus{border-color:#0969da;box-shadow:0 0 0 3px rgba(9,105,218,.15)}
+
+/* ── Content ── */
+.content{padding:18px 32px;max-width:1400px}
+
+/* ── Summary cards ── */
+.cards{display:flex;gap:12px;margin-bottom:4px;flex-wrap:wrap}
+.cards-sub{font-size:11px;color:var(--txt2);margin-bottom:18px;padding-left:2px}
+.card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 22px;min-width:100px}
+.card .num{font-size:36px;font-weight:700;line-height:1}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt2);margin-top:3px}
+.card.pass .num{color:var(--pass)}.card.warn .num{color:var(--warn)}
+.card.fail .num{color:var(--fail)}.card.error .num{color:var(--error)}.card.skip .num{color:var(--skip)}
+.cov-card{flex:1;min-width:280px}
+.cov-bar{display:flex;height:16px;border-radius:4px;overflow:hidden;background:#eee;margin:8px 0 4px}
+.cov-pass{background:var(--pass)}.cov-warn{background:var(--warn)}.cov-fail{background:var(--fail)}
+.cov-text{font-size:12px;color:var(--txt2)}
+
+/* ── Check summary table ── */
+.sec-title{font-size:13px;font-weight:700;color:var(--txt);margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';width:3px;height:15px;background:#0969da;border-radius:2px;display:inline-block}
+.stbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px;font-size:13px}
+.stbl th{background:#f6f8fa;padding:8px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt2);border-bottom:1px solid var(--border);font-weight:600}
+.stbl th.r{text-align:center}
+.stbl td{padding:9px 14px;border-bottom:1px solid #f1f3f5;vertical-align:middle}
+.stbl tr:last-child td{border-bottom:none}
+.stbl td.r{text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.stbl td.r.pass{color:var(--pass)}.stbl td.r.warn{color:var(--warn)}.stbl td.r.fail{color:var(--fail)}.stbl td.r.error{color:var(--error)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot.pass{background:var(--pass)}.dot.warn{background:var(--warn)}.dot.fail{background:var(--fail)}
+.mini-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;background:#eee;width:80px;display:inline-block}
+.mini-fill{background:var(--pass);height:100%;display:block}
+.rate-cell{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2)}
+
+/* ── Tooltips ── */
+[data-tip]{position:relative;cursor:help}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);
+  background:#24292f;color:#e6edf3;font-size:11px;font-weight:400;line-height:1.45;padding:6px 10px;
+  border-radius:5px;white-space:normal;max-width:240px;text-align:center;pointer-events:none;
+  opacity:0;transition:opacity .15s;z-index:200}
+[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#24292f;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1}
+
+/* ── Instance block ── */
+.inst{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.inst-hdr{padding:11px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;border-bottom:1px solid var(--border)}
+.inst-hdr:hover{background:#f6f8fa}
+.inst-icon{font-size:14px}
+.inst-name{font-weight:600;font-size:14px;flex:1}
+.inst-badges{display:flex;gap:5px}
+.ibadge{padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.ibadge.pass{background:#e6f4ea;color:var(--pass)}.ibadge.warn{background:#fff8e6;color:var(--warn)}
+.ibadge.fail{background:#ffeaea;color:var(--fail)}.ibadge.error{background:#fdecea;color:var(--error)}
+.chev{transition:transform .2s;font-size:10px;color:var(--txt2)}
+.chev.open{transform:rotate(90deg)}
+
+/* ── Check group ── */
+.grp{border-top:1px solid #f1f3f5}
+.grp-hdr{padding:7px 16px;display:flex;align-items:center;gap:10px;background:#f8f9fa;cursor:pointer;user-select:none}
+.grp-hdr:hover{background:#eef1f4}
+.grp-name{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt2);flex:1}
+.grp-badges{display:flex;gap:4px}
+
+/* ── Result rows ── */
+.rtbl{width:100%;border-collapse:collapse;font-size:13px}
+.rtbl th{padding:6px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt2);background:#fafbfc;border-bottom:1px solid #f1f3f5;font-weight:600}
+.rtbl th.r{text-align:right}
+.rtbl td{padding:8px 16px;border-bottom:1px solid #f8f9fa;vertical-align:middle}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr:hover td{background:#f6f8fa}
+.rtbl td.r{text-align:right;font-variant-numeric:tabular-nums;color:var(--txt2)}
+.sbadge{display:inline-block;padding:2px 9px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.sbadge.pass{background:#e6f4ea;color:var(--pass)}.sbadge.warn{background:#fff8e6;color:var(--warn)}
+.sbadge.fail{background:#ffeaea;color:var(--fail)}.sbadge.error{background:#fdecea;color:var(--error)}
+.sbadge.skip{background:#f0f0f0;color:var(--skip)}
+.detail{font-size:11px;color:var(--txt2);margin-top:2px}
+.hidden{display:none!important}
+
+/* ── Bucket (classification) ── */
+.cls-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-right:5px;vertical-align:middle}
+.cls-badge.optin{background:#e6f4ea;color:#1a7f37}
+.cls-badge.pii{background:#ffeaea;color:#c0392b}
+.cls-badge.optout{background:#e8f0fe;color:#1558d6}
+.bkt{border-top:1px solid var(--border)}
+.bkt-hdr{padding:8px 16px;display:flex;align-items:center;gap:10px;background:#f0f2f4;cursor:pointer;user-select:none}
+.bkt-hdr:hover{background:#eaecef}
+.bkt-name{font-weight:700;font-size:12px;flex:1}
+</style>
+</head>
+<body>
+<div id="hdr-root"></div>
+<div class="fbar" id="fbar-root"></div>
+<div class="content" id="content-root"></div>
+
+<script>
+const D = {"meta": {"powerapp": "bom", "namespace": "r43_item_service_demo", "env": "dev", "mode": "incremental", "timestamp": "2026-09-29 05:28:10", "duration_s": 94.1, "total_rows": 3562009}, "rows": [{"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_bom_component", "columns": ["etl_ts", "anomalous", "id", "bom_header_id", "header_material_id", "component_material_id", "quantity", "item_node_number", "alternate_item_group", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "effective_from", "valid_to", "component_bom_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 22, "row_count": 105663, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 105663, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 22, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:48:45.547382", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 105663, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_bom_exploded_component", "columns": ["etl_ts", "anomalous", "id", "bom_id", "material_id", "quantity", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 21181, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 21181, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:48:45.548295", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 21181, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_bom_header", "columns": ["etl_ts", "anomalous", "id", "erp_id", "bom_number", "alternate_bom_number", "bom_usage", "material_id", "quantity", "top_bom", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "effective_from", "valid_to", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 22, "row_count": 8781, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 8781, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 22, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:48:45.54913", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 8781, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_bom_plant", "columns": ["etl_ts", "anomalous", "id", "bom_header_id", "plant_id", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 15, "row_count": 7763, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 7763, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 15, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:14.588674", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 72315, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_bom_requirement", "columns": ["etl_ts", "anomalous", "id", "sourcing_list_id", "bom_header_id", "material_id", "plant_id", "ship_to_plant_id", "bom_qty", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 19, "row_count": 2396, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 2396, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 19, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:18.089906", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 2396, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_commodity", "columns": ["etl_ts", "anomalous", "id", "commodity_code", "commodity_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "is_commodity", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 21, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 21, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 21, "row_delta_cur": 21, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:18.09551", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 21, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_company", "columns": ["etl_ts", "anomalous", "id", "erp_id", "company_code", "company_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 47623, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 47623, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 47602, "row_delta_cur": 47623, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:18.113739", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 47623, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_component", "columns": ["id", "bom_header_id", "header_material_id", "component_material_id", "quantity", "item_node_number", "alternate_item_group", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "effective_from", "valid_to", "component_bom_id", "etl_ts"], "column_count": 17, "row_count": 105620, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 105620, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "FAIL", "schema_contract_missing": ["ingestion_timestamp", "execution_id", "instance"], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 112.7, "last_snapshot_operation": "overwrite", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_status": "SKIP", "meta_skip_reason": "no metadata found", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_exploded_component", "columns": ["id", "bom_id", "material_id", "quantity", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "etl_ts"], "column_count": 11, "row_count": 21114, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 21114, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "FAIL", "schema_contract_missing": ["ingestion_timestamp", "execution_id", "instance"], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 112.7, "last_snapshot_operation": "overwrite", "freshness_threshold_hours": 48, "schema_col_count": 11, "meta_status": "SKIP", "meta_skip_reason": "no metadata found", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_external_system", "columns": ["etl_ts", "anomalous", "id", "system_id", "system_name", "description", "active", "deleted", "created_by", "modified_by", "enterprise_id", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 17, "row_count": 700, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 700, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.4, "row_delta_prev": 697, "row_delta_cur": 700, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:19.416966", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 700, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_field_data_value", "columns": ["etl_ts", "anomalous", "id", "entity_id", "field_meta_data_id", "field_value", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 1636426, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 1636426, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.1, "row_delta_prev": 1634310, "row_delta_cur": 1636426, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:32.821262", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 1636426, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_field_meta_data", "columns": ["etl_ts", "anomalous", "id", "erp_id", "entity_type", "field_type", "field_id", "field_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 18, "row_count": 5705, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 5705, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.4, "row_delta_prev": 5685, "row_delta_cur": 5705, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 18, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:33.114114", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 5705, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_header", "columns": ["id", "erp_id", "bom_number", "alternate_bom_number", "bom_usage", "material_id", "quantity", "top_bom", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "effective_from", "valid_to", "etl_ts"], "column_count": 17, "row_count": 8763, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 8763, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "FAIL", "schema_contract_missing": ["ingestion_timestamp", "execution_id", "instance"], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 112.7, "last_snapshot_operation": "overwrite", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_status": "SKIP", "meta_skip_reason": "no metadata found", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_tier_price", "columns": ["etl_ts", "anomalous", "id", "material_id", "plant_id", "cost_basis", "source_type", "source_ref", "sourcing_event_id", "supplier_id", "allocation_share_pct", "valid_from", "valid_to", "scale_begin_qty", "scale_end_qty", "unit_price", "currency", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "award_export_ts", "award_catalog_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 29, "row_count": 118, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 118, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 118, "row_delta_cur": 118, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 29, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:34.270198", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 118, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_type", "columns": ["etl_ts", "anomalous", "id", "item_type_code", "name", "active", "deleted", "created_by", "modified_by", "description", "created_at", "updated_at", "erp_id", "company_id", "default_type", "status", "determination_criteria", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 21, "row_count": 1156, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 1156, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 1.0, "row_delta_prev": 1144, "row_delta_cur": 1156, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 21, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:34.396179", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 1156, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_type_attribute", "columns": ["etl_ts", "anomalous", "id", "item_type_id", "attribute_id", "flex_group_id", "visible_to_supplier", "field_type", "attribute_order", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 19, "row_count": 39327, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 39327, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 1.1, "row_delta_prev": 38915, "row_delta_cur": 39327, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 19, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:47.931495", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 39327, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_type_criterea", "columns": ["etl_ts", "anomalous", "id", "item_type_id", "material_type_id", "material_group_id", "plant_id", "material_plant_id", "visible_to_supplier", "priority", "is_valid", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 21, "row_count": 5269, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 5269, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.2, "row_delta_prev": 5261, "row_delta_cur": 5269, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 21, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:48.140539", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 5269, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_type_flex_group", "columns": ["etl_ts", "anomalous", "id", "flex_group_code", "name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 15, "row_count": 7, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 7, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 7, "row_delta_cur": 7, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 15, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:48.212414", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 7, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_item_type_master_attribute", "columns": ["etl_ts", "anomalous", "id", "erp_id", "flex_group_id", "attribute_code", "name", "description", "data_type", "field_type", "attribute_type", "source_type", "attribute_order", "field_group", "visible_to_supplier", "readonly", "mandatory", "default_selection", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 28, "row_count": 62035, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 62035, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.8, "row_delta_prev": 61549, "row_delta_cur": 62035, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 28, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:49:49.611047", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 62035, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_material", "columns": ["etl_ts", "anomalous", "id", "erp_id", "material_code", "uom", "material_type_id", "material_group_id", "commodity_id", "prv_material_id", "active", "deleted", "created_by", "modified_by", "material_summary", "revision", "created_at", "updated_at", "effective_from", "valid_to", "material_indexed", "parent_item_synced", "sync_detail", "job_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 28, "row_count": 354020, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 354020, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.1, "row_delta_prev": 353545, "row_delta_cur": 354020, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 28, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:00.928878", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 354020, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_material_group", "columns": ["etl_ts", "anomalous", "id", "erp_id", "material_group_code", "material_group_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 38198, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 38198, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.2, "row_delta_prev": 38133, "row_delta_cur": 38198, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:01.150145", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 38198, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_material_plant", "columns": ["etl_ts", "anomalous", "id", "plant_id", "material_id", "purchase_group_id", "standard_price", "moving_avg_price", "currency", "delivery_time", "delivery_time_uom", "eoq", "eoquom", "procurement_type", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "effective_from", "valid_to", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 26, "row_count": 236479, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 236479, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.2, "row_delta_prev": 236050, "row_delta_cur": 236479, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 26, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:01.357223", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 236479, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_material_type", "columns": ["etl_ts", "anomalous", "id", "erp_id", "material_type_code", "material_type_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 26525, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 26525, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.2, "row_delta_prev": 26472, "row_delta_cur": 26525, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:02.631054", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 26525, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_multi_locale_details", "columns": ["etl_ts", "anomalous", "id", "entity_id", "entity_type", "locale_id", "name", "description", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 18, "row_count": 298237, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 298237, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.2, "row_delta_prev": 297762, "row_delta_cur": 298237, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 18, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:14.408807", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 298237, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_plant", "columns": ["etl_ts", "anomalous", "id", "erp_id", "company_id", "plant_code", "plant_name", "address", "postal_code", "region", "country", "language", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 22, "row_count": 72315, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 72315, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.1, "row_delta_prev": 72210, "row_delta_cur": 72315, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 22, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:14.588674", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 72315, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_plant_items", "columns": ["etl_ts", "anomalous", "id", "internal_number", "version", "parent_item_internal_number", "parent_item_version", "company_code", "plant_code", "erp_owned", "attributes", "requires_lookup_recompute", "created_at", "created_by_id", "deleted_at", "material_plant_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 20, "row_count": 269333, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 269333, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 20, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:15.281216", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 269333, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_purchase_group", "columns": ["etl_ts", "anomalous", "id", "erp_id", "company_id", "purchase_group_code", "purchase_group_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 17, "row_count": 47668, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 47668, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.1, "row_delta_prev": 47617, "row_delta_cur": 47668, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:15.837097", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 47668, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_purchase_org", "columns": ["etl_ts", "anomalous", "id", "erp_id", "purchase_org_code", "purchase_org_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 57894, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 57894, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 57878, "row_delta_cur": 57894, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:27.511798", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 57894, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_purchase_org_plant", "columns": ["etl_ts", "anomalous", "id", "erp_id", "purchase_org_id", "company_id", "plant_id", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 17, "row_count": 33286, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 33286, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.7, "row_delta_prev": 33051, "row_delta_cur": 33286, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:27.849946", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 33286, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_requirement", "columns": ["id", "sourcing_list_id", "bom_header_id", "material_id", "plant_id", "ship_to_plant_id", "bom_qty", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "etl_ts"], "column_count": 14, "row_count": 2379, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 2379, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "FAIL", "schema_contract_missing": ["ingestion_timestamp", "execution_id", "instance"], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "snapshot_count": 1, "last_snapshot_hours_ago": 112.7, "last_snapshot_operation": "overwrite", "freshness_threshold_hours": 48, "schema_col_count": 14, "meta_status": "SKIP", "meta_skip_reason": "no metadata found", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_event", "columns": ["etl_ts", "anomalous", "id", "erp_id", "event_id", "name", "detail", "market_id", "timezone", "currency", "classification_id", "test_event", "sealed_bid", "event_type", "event_status", "event_source", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "classifications", "request_id", "currency_code", "event_number", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 30, "row_count": 951, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 951, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.8, "row_delta_prev": 943, "row_delta_cur": 951, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 30, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:27.929908", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 951, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_event_field", "columns": ["etl_ts", "anomalous", "id", "sourcing_event_id", "sourcing_item_type_id", "sourcing_field_id", "field_name", "rating_name", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 18, "row_count": 34966, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 34966, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.8, "row_delta_prev": 34705, "row_delta_cur": 34966, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 18, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:28.206623", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 34966, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_event_material", "columns": ["etl_ts", "anomalous", "id", "sourcing_event_id", "sourcing_list_id", "sourcing_material_id", "material_id", "plant_id", "item_type_id", "quantity", "active", "deleted", "created_by", "modified_by", "sourcing_unique_material_id", "sourcing_unique_item_type_id", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 22, "row_count": 2625, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 2625, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 1.2, "row_delta_prev": 2595, "row_delta_cur": 2625, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 22, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:39.028558", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 2625, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_list", "columns": ["etl_ts", "anomalous", "id", "erp_id", "name", "description", "default_list", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "list_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 18, "row_count": 2360, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 2360, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.7, "row_delta_prev": 2343, "row_delta_cur": 2360, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 18, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:39.203241", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 2360, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_material", "columns": ["etl_ts", "anomalous", "id", "sourcing_list_id", "bom_requirement_id", "material_id", "plant_id", "ship_to_plant_id", "quantity", "adjusted_qty", "item_type_id", "active", "deleted", "created_by", "modified_by", "status", "created_at", "updated_at", "prv_item_type_id", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 23, "row_count": 4399, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 4399, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.9, "row_delta_prev": 4358, "row_delta_cur": 4399, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 23, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:39.314245", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 4399, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_sourcing_material_commodity", "columns": ["etl_ts", "anomalous", "id", "sourcing_list_id", "item_type_id", "commodity_id", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 16, "row_count": 686, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 686, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 1.8, "row_delta_prev": 674, "row_delta_cur": 686, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 16, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:39.451735", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 686, "meta_status": "PASS", "cls_routing": "PASS"}, {"classification": "optin", "namespace": "r43_item_service_demo", "table": "bom_uom", "columns": ["etl_ts", "anomalous", "id", "uom_id", "code", "name", "allowable_precision", "active", "deleted", "created_by", "modified_by", "created_at", "updated_at", "ingestion_timestamp", "execution_id", "instance", "is_deleted"], "column_count": 17, "row_count": 20, "pk_null_status": "PASS", "pk_null_counts": {}, "pk_null_total_rows": 20, "pk_null_cols": ["id"], "duplicate_pks": 0, "pk_cols": ["id"], "schema_contract_status": "PASS", "schema_contract_missing": [], "schema_contract_required": ["ingestion_timestamp", "execution_id", "instance"], "row_delta_pct": 0.0, "row_delta_prev": 20, "row_delta_cur": 20, "snapshot_count": 2, "last_snapshot_hours_ago": 21.6, "last_snapshot_operation": "append", "freshness_threshold_hours": 48, "schema_col_count": 17, "meta_last_status": "success", "meta_last_run_at": "2026-09-28 07:50:44.632189", "meta_last_error": null, "meta_stuck": false, "meta_consec_fails": 0, "meta_row_count": 20, "meta_status": "PASS", "cls_routing": "PASS"}]};
+
+// ── Check definitions ──────────────────────────────────────────────────────
+const CHECK_TYPES = [
+  { key:'row_count',       label:'Row Count',        icon:'☰', desc:'Total rows in each Iceberg table. WARN if empty; WARN if row count changed >20% vs previous snapshot (Δ).' },
+  { key:'source_target',   label:'Source → Target',  icon:'⇌', desc:'Source parquet row count vs Iceberg Silver row count. Catches data loss during ingestion. Full-load only — skipped for incremental (source files are deltas).' },
+  { key:'schema_contract', label:'Schema Contract',  icon:'✦', desc:'Checks that required platform columns are present: ingestion_timestamp, execution_id, instance. FAIL if any are missing.' },
+  { key:'null_rate',       label:'Null Rate',         icon:'◎', desc:'Incremental: null % on PK columns only (FAIL if >75%). Full-load: null % across all columns on a 10k-row sample (WARN if >20%).' },
+  { key:'duplicate_pk',    label:'Dedup',             icon:'⧉', desc:'Counts rows with duplicate primary key values. FAIL if any duplicates found. PKs come from cdc.primary_keys in config. SKIP if PK column not found in table schema.' },
+  { key:'freshness',       label:'Freshness',         icon:'◷', desc:'Hours since the last Iceberg snapshot was written. PASS ≤48h · WARN ≤168h · FAIL >168h. Catches tables where the pipeline has stopped delivering data.' },
+  { key:'cls_routing',     label:'Bucket Routing',    icon:'◈', desc:'Verifies PII tables are in the pii bucket and non-PII tables are not in pii. FAIL if a table is in the wrong S3 Table bucket — a compliance risk.' },
+];
+
+// ── Per-row per-check status ───────────────────────────────────────────────
+function checkStatus(r, key) {
+  if (key === 'row_count') {
+    if (r.row_count_error) return { s:'error', detail: r.row_count_error };
+    const rc = r.row_count ?? 0;
+    if (rc === 0 && r.last_snapshot_hours_ago != null) return { s:'warn', detail:'empty table' };
+    const dp = r.row_delta_pct;
+    if (dp != null && dp > 20) return { s:'warn', detail:`Δ${dp > 0 ? '+' : ''}${dp.toFixed(1)}%` };
+    return { s:'pass', detail: rc.toLocaleString() + ' rows' };
+  }
+  if (key === 'source_target') {
+    const st = r.source_count_status;
+    if (!st || st === 'SKIP') return { s:'skip', detail:'incremental / no path' };
+    if (st === 'PASS') return { s:'pass', detail:`src=${(r.source_count_source_rows??0).toLocaleString()}` };
+    if (st === 'FAIL') return { s:'fail', detail:`Δ${(r.source_count_delta??0).toLocaleString()} rows` };
+    return { s:'error', detail:(r.source_count_detail||'').slice(0,80) };
+  }
+  if (key === 'schema_contract') {
+    const st = r.schema_contract_status;
+    if (!st) return { s:'skip', detail:'—' };
+    if (st === 'PASS') return { s:'pass', detail:`${r.column_count??'?'} cols` };
+    const missing = (r.schema_contract_missing||[]).join(', ');
+    return { s:'fail', detail:`missing: ${missing}` };
+  }
+  if (key === 'null_rate') {
+    const pk = r.pk_null_status;
+    if (pk === 'SKIP') return { s:'skip', detail:'PK col not found in table' };
+    if (pk === 'FAIL') return { s:'fail', detail:'PK has nulls' };
+    if (pk === 'WARN') return { s:'warn', detail:'PK partial nulls' };
+    const hn = r.high_nulls || {};
+    const cols = Object.entries(hn).sort((a,b)=>b[1]-a[1]);
+    if (cols.length === 0) return { s:'pass', detail:'no high nulls' };
+    const top = cols.slice(0,3).map(([c,v])=>`${c}=${v}%`).join('  ');
+    return { s:'warn', detail: top + (cols.length > 3 ? ` +${cols.length-3} more` : '') };
+  }
+  if (key === 'duplicate_pk') {
+    if ('pk_error' in r) return { s:'error', detail: (r.pk_error||'').slice(0,80) };
+    const dup = r.duplicate_pks;
+    if (dup == null) return { s:'skip', detail:'no PKs defined' };
+    if (dup === -1)  return { s:'skip', detail:'PK col not found in table schema' };
+    if (dup === 0)   return { s:'pass', detail:`0 dups (${(r.pk_cols||[]).join(', ')})` };
+    return { s:'fail', detail:`${dup.toLocaleString()} dups on ${(r.pk_cols||[]).join(', ')}` };
+  }
+  if (key === 'freshness') {
+    const h = r.last_snapshot_hours_ago;
+    if (h == null) return { s:'skip', detail:'no snapshot' };
+    if (h <= 48)  return { s:'pass',  detail:`${h}h ago` };
+    if (h <= 168) return { s:'warn',  detail:`${h}h ago` };
+    return { s:'fail', detail:`${h}h ago (stale)` };
+  }
+  if (key === 'cls_routing') {
+    const st = r.cls_routing;
+    if (!st || st === 'SKIP') return { s:'skip', detail: r.cls_routing_msg || '—' };
+    if (st === 'PASS') return { s:'pass', detail:`${r.classification||'?'} bucket ✓` };
+    return { s:'fail', detail: (r.cls_routing_msg||'wrong bucket').slice(0,100) };
+  }
+  return { s:'skip', detail:'—' };
+}
+
+function rowOverallStatus(r) {
+  if (r.row_count_error) return 'error';
+  const statuses = CHECK_TYPES.map(c => checkStatus(r, c.key).s);
+  if (statuses.includes('error')) return 'error';
+  if (statuses.includes('fail'))  return 'fail';
+  if (statuses.includes('warn'))  return 'warn';
+  return 'pass';
+}
+
+// ── Aggregate stats ────────────────────────────────────────────────────────
+function aggregateByCheck(rows) {
+  return CHECK_TYPES.map(ct => {
+    const counts = {pass:0,warn:0,fail:0,error:0,skip:0};
+    rows.forEach(r => {
+      if ('status' in r) return;
+      counts[checkStatus(r, ct.key).s]++;
+    });
+    const total = Object.values(counts).reduce((a,b)=>a+b,0);
+    const passRate = total > 0 ? Math.round((counts.pass / (total - counts.skip)) * 100) || 0 : 0;
+    return { ...ct, ...counts, total, passRate };
+  });
+}
+
+// ── Bucket constants ──────────────────────────────────────────────────────
+const CLS_LIST  = ['optin','pii','optout'];
+const CLS_ICONS = {optin:'🟢',pii:'🔴',optout:'🔵'};
+
+// ── Filter state ──────────────────────────────────────────────────────────
+let filterStatus = 'all';
+let filterCheck  = 'all';
+let filterSearch = '';
+
+function matchesFilter(r, checkKey) {
+  if ('status' in r) return false;
+  const os = rowOverallStatus(r);
+  if (filterStatus !== 'all' && os !== filterStatus) return false;
+  const tbl = (r.table||'').toLowerCase();
+  if (filterSearch && !tbl.includes(filterSearch.toLowerCase())) return false;
+  if (filterCheck !== 'all' && checkKey !== filterCheck) return false;
+  return true;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────
+const m = D.meta;
+const tableRows = D.rows.filter(r => !('status' in r) && !r.row_count_error || r.row_count_error);
+const ok = tableRows.filter(r => rowOverallStatus(r)==='pass').length;
+const wn = tableRows.filter(r => rowOverallStatus(r)==='warn').length;
+const fl = tableRows.filter(r => rowOverallStatus(r)==='fail').length;
+const er = tableRows.filter(r => rowOverallStatus(r)==='error').length;
+const sk = tableRows.filter(r => rowOverallStatus(r)==='skip').length;
+const total = tableRows.length;
+const _allCheckAgg = aggregateByCheck(tableRows);
+const activeCheckKeys = new Set(_allCheckAgg.filter(c => {
+  if ((c.total - c.skip) > 0) return true;
+  // Show dedup even when all-SKIP if PKs were configured (duplicate_pks === -1 signals col-not-found)
+  if (c.key === 'duplicate_pk') return tableRows.some(r => r.duplicate_pks != null);
+  // Show null_rate even when all-SKIP if PK null check was attempted (pk_null_status set)
+  if (c.key === 'null_rate')    return tableRows.some(r => r.pk_null_status != null);
+  return false;
+}).map(c => c.key));
+// Exclude skip from both numerator and denominator so skipped check types
+// don't dilute the pass rate (e.g. source_target always skip for incremental).
+const totalChecks = tableRows.reduce((acc,r)=>{
+  CHECK_TYPES.forEach(c=>{ if(checkStatus(r,c.key).s!=='skip') acc++; }); return acc; }, 0);
+const passChecks  = tableRows.reduce((acc,r)=>{
+  CHECK_TYPES.forEach(c=>{ if(checkStatus(r,c.key).s==='pass') acc++; }); return acc; }, 0);
+const passRate = totalChecks > 0 ? Math.round(passChecks*100/totalChecks) : 0;
+
+function verdict() {
+  if (er > 0 || fl > 0) return {cls:'failed', icon:'✗', txt:'FAILED'};
+  if (wn > 0)           return {cls:'warned', icon:'△', txt:'WARNING'};
+  return                       {cls:'passed', icon:'✓', txt:'PASSED'};
+}
+const vd = verdict();
+const dur = m.duration_s < 60 ? `${m.duration_s.toFixed(0)}s` : `${(m.duration_s/60).toFixed(1)}min`;
+
+// Header
+document.getElementById('hdr-root').innerHTML = `
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <h1>DI Data Validator — ${esc(m.powerapp.toUpperCase())}</h1>
+      <div class="hdr-meta">
+        <span>Namespace: <b>${esc(m.namespace)}</b></span>
+        <span>·</span>
+        <span>Environment: <b>${esc(m.env)}</b></span>
+        <span>·</span>
+        <span>Mode: <b>${esc(m.mode)}</b></span>
+        <span>·</span>
+        <span><b>${esc(m.timestamp)}</b> UTC</span>
+      </div>
+      <div class="hdr-stats">
+        <span>Duration <b>${dur}</b></span>
+        <span>Tables <b>${total}</b></span>
+        <span>Total checks <b>${totalChecks}</b></span>
+        <span>Pass rate <b>${passRate}%</b></span>
+        <span>Total rows <b>${m.total_rows.toLocaleString()}</b></span>
+      </div>
+    </div>
+    <div class="verdict ${vd.cls}">${vd.icon} ${vd.txt}</div>
+  </div>
+</div>`;
+
+// Filter bar
+function renderFilters() {
+  const sp = (s,label,icon='') => `<span class="pill s-${s} ${filterStatus===s?'active':''}" onclick="setStatus('${s}')">${icon} ${label}</span>`;
+  const cp = (c,label,icon='',desc='') => `<span class="pill c-${c==='all'?'all':'check'} ${filterCheck===c?'active':''}" onclick="setCheck('${c}')"${desc?` data-tip="${esc(desc)}"`:''}>${icon} ${label}</span>`;
+  document.getElementById('fbar-root').innerHTML = `
+    <span class="flabel">Status</span>
+    ${sp('all','All')} ${sp('pass','✓ Pass')} ${sp('warn','△ Warn')}
+    ${sp('fail','✗ Fail')} ${sp('error','! Error')} ${sp('skip','– Skip')}
+    <div class="fsep"></div>
+    <span class="flabel">Check</span>
+    ${cp('all','All Checks')}
+    ${CHECK_TYPES.filter(c=>activeCheckKeys.has(c.key)).map(c=>cp(c.key, c.icon+' '+c.label,'',c.desc||'')).join('')}
+    <input class="search" placeholder="Search table name…" value="${esc(filterSearch)}"
+      oninput="setSearch(this.value)">`;
+}
+
+function setStatus(s){ filterStatus=s; renderFilters(); renderContent(); }
+function setCheck(c){ filterCheck=c;   renderFilters(); renderContent(); }
+function setSearch(v){ filterSearch=v; renderFilters(); renderContent(); }
+
+renderFilters();
+
+// Content
+function renderContent() {
+  const checkAgg = aggregateByCheck(tableRows);
+  const passTotal = ok; const warnTotal = wn; const covPct = passRate;
+
+  // summary cards
+  const covBar = `
+    <div class="cov-bar">
+      <div class="cov-pass" style="width:${Math.round(ok*100/total||0)}%"></div>
+      <div class="cov-warn" style="width:${Math.round(wn*100/total||0)}%"></div>
+      <div class="cov-fail" style="width:${Math.round((fl+er)*100/total||0)}%"></div>
+    </div>
+    <div class="cov-text">${passChecks} of ${totalChecks} checks passed across ${total} table(s) — ${passRate}% pass rate</div>`;
+
+  const cards = `
+    <div class="cards">
+      <div class="card pass" data-tip="Tables where every check passed"><div class="num">${ok}</div><div class="lbl">Pass</div></div>
+      <div class="card warn" data-tip="Tables with at least one warning but no failures"><div class="num">${wn}</div><div class="lbl">Warn</div></div>
+      <div class="card fail" data-tip="Tables with at least one failing check"><div class="num">${fl}</div><div class="lbl">Fail</div></div>
+      <div class="card error" data-tip="Tables where a check threw an exception (Spark/Iceberg error)"><div class="num">${er}</div><div class="lbl">Error</div></div>
+      <div class="card skip" data-tip="Tables where all checks were skipped (no applicable checks for this mode)"><div class="num">${sk}</div><div class="lbl">Skip</div></div>
+      <div class="card cov-card"><div class="lbl">Coverage</div>${covBar}</div>
+    </div>
+    <div class="cards-sub">Each tile = tables by worst check status. A table is PASS only if every check passes. See Checks Summary below for per-check breakdown.</div>`;
+
+  // checks summary table
+  const checkRows = checkAgg.filter(c => activeCheckKeys.has(c.key)).map(c => {
+    const nonSkip = c.total - c.skip;
+    const pr = nonSkip > 0 ? Math.round(c.pass * 100 / nonSkip) : 0;
+    const dotCls = c.fail > 0 || c.error > 0 ? 'fail' : c.warn > 0 ? 'warn' : 'pass';
+    return `<tr>
+      <td><span class="dot ${dotCls}"></span><span ${c.desc?`data-tip="${esc(c.desc)}"`:''} style="cursor:${c.desc?'help':'default'}">${esc(c.icon)} ${esc(c.label)}</span></td>
+      <td class="r ${c.pass>0?'pass':''}">${c.pass||0}</td><td class="r ${c.warn>0?'warn':''}">${c.warn||0}</td>
+      <td class="r ${c.fail>0?'fail':''}">${c.fail||0}</td><td class="r ${c.error>0?'error':''}">${c.error||0}</td>
+      <td class="r">${c.skip||0}</td><td class="r">${c.total}</td>
+      <td><div class="rate-cell"><div class="mini-bar" style="display:flex"><div class="mini-fill" style="width:${pr}%"></div></div>${pr}%</div></td>
+    </tr>`;
+  }).join('');
+
+  const summaryTable = `
+    <div class="sec-title">Checks Summary</div>
+    <table class="stbl">
+      <thead><tr>
+        <th>Check</th><th class="r">Pass</th><th class="r">Warn</th>
+        <th class="r">Fail</th><th class="r">Error</th><th class="r">Skip</th>
+        <th class="r">Total</th><th>Pass Rate</th>
+      </tr></thead>
+      <tbody>${checkRows}</tbody>
+    </table>`;
+
+  // Bucket summary table
+  const bucketRowsHtml = CLS_LIST.map(cls => {
+    const br = tableRows.filter(r => r.classification === cls);
+    if (br.length === 0) return `<tr><td><span class="cls-badge ${cls}">${cls.toUpperCase()}</span></td><td class="r" colspan="5" style="color:var(--txt2)">— no tables in this bucket</td></tr>`;
+    const bOk = br.filter(r=>rowOverallStatus(r)==='pass').length;
+    const bWn = br.filter(r=>rowOverallStatus(r)==='warn').length;
+    const bFl = br.filter(r=>rowOverallStatus(r)==='fail').length;
+    const bEr = br.filter(r=>rowOverallStatus(r)==='error').length;
+    return `<tr>
+      <td><span class="cls-badge ${cls}">${cls.toUpperCase()}</span></td>
+      <td class="r">${br.length}</td>
+      <td class="r pass">${bOk||0}</td>
+      <td class="r warn">${bWn||0}</td>
+      <td class="r fail">${bFl||0}</td>
+      <td class="r error">${bEr||0}</td>
+    </tr>`;
+  }).join('');
+  const bucketSummary = `
+    <div class="sec-title">Bucket Summary</div>
+    <table class="stbl">
+      <thead><tr>
+        <th>Bucket</th><th class="r">Tables</th><th class="r">Pass</th>
+        <th class="r">Warn</th><th class="r">Fail</th><th class="r">Error</th>
+      </tr></thead>
+      <tbody>${bucketRowsHtml}</tbody>
+    </table>`;
+
+  // Instance sections (grouped by namespace)
+  const namespaces = [...new Set(tableRows.map(r => r.namespace||''))];
+  const instHtml = namespaces.map(ns => renderInstance(ns, tableRows.filter(r=>r.namespace===ns))).join('');
+
+  document.getElementById('content-root').innerHTML = cards + summaryTable + bucketSummary + instHtml;
+}
+
+function renderInstance(ns, rows) {
+  const nsOk  = rows.filter(r=>rowOverallStatus(r)==='pass').length;
+  const nsWn  = rows.filter(r=>rowOverallStatus(r)==='warn').length;
+  const nsFl  = rows.filter(r=>rowOverallStatus(r)==='fail').length;
+  const nsEr  = rows.filter(r=>rowOverallStatus(r)==='error').length;
+  const icon  = (nsFl+nsEr) > 0 ? '✗' : nsWn > 0 ? '△' : '✓';
+  const badges = [
+    nsOk  > 0 ? `<span class="ibadge pass">${nsOk} pass</span>`  : '',
+    nsWn  > 0 ? `<span class="ibadge warn">${nsWn} warn</span>`  : '',
+    nsFl  > 0 ? `<span class="ibadge fail">${nsFl} fail</span>`  : '',
+    nsEr  > 0 ? `<span class="ibadge error">${nsEr} error</span>` : '',
+  ].join('');
+
+  const id = 'inst-' + ns.replace(/\W/g,'_');
+
+  // Sub-group by bucket (optin → pii → optout), then by check type within each bucket
+  const CLS_LABELS = {optin:'OPTIN', pii:'PII', optout:'OPTOUT'};
+  const bucketsHtml = CLS_LIST.map(cls => {
+    const clsRows = rows.filter(r => r.classification === cls);
+    if (clsRows.length === 0) return '';
+    const clsId = id + '-' + cls;
+    const cOk = clsRows.filter(r=>rowOverallStatus(r)==='pass').length;
+    const cWn = clsRows.filter(r=>rowOverallStatus(r)==='warn').length;
+    const cFl = clsRows.filter(r=>rowOverallStatus(r)==='fail').length;
+    const cEr = clsRows.filter(r=>rowOverallStatus(r)==='error').length;
+    const clsBadges = [
+      cOk>0?`<span class="ibadge pass">${cOk} pass</span>`:'',
+      cWn>0?`<span class="ibadge warn">${cWn} warn</span>`:'',
+      cFl>0?`<span class="ibadge fail">${cFl} fail</span>`:'',
+      cEr>0?`<span class="ibadge error">${cEr} error</span>`:'',
+    ].join('');
+    const checkGroups = CHECK_TYPES.map(ct => {
+      if (!activeCheckKeys.has(ct.key)) return '';
+      if (filterCheck !== 'all' && filterCheck !== ct.key) return '';
+      const visRows = clsRows.filter(r => matchesFilter(r, ct.key));
+      if (visRows.length === 0) return '';
+      return renderGroup(ct, visRows, clsId);
+    }).join('');
+    if (!checkGroups.trim()) return '';
+    return `
+    <div class="bkt">
+      <div class="bkt-hdr" onclick="toggleGrp('${clsId}')">
+        <span class="bkt-name"><span class="cls-badge ${cls}">${CLS_LABELS[cls]}</span> ${CLS_ICONS[cls]} <span style="font-weight:400;color:var(--txt2)">${clsRows.length} table(s)</span></span>
+        <span class="grp-badges">${clsBadges}</span>
+        <span class="chev open" id="${clsId}-chev">▶</span>
+      </div>
+      <div id="${clsId}-body">${checkGroups}</div>
+    </div>`;
+  }).join('');
+
+  if (!bucketsHtml.trim()) return '';
+
+  return `
+  <div class="inst" id="${id}">
+    <div class="inst-hdr" onclick="toggleInst('${id}')">
+      <span class="inst-icon">${icon}</span>
+      <span class="inst-name">${esc(ns)}</span>
+      <span class="inst-badges">${badges}</span>
+      <span class="chev open" id="${id}-chev">▶</span>
+    </div>
+    <div id="${id}-body">${bucketsHtml}</div>
+  </div>`;
+}
+
+function renderGroup(ct, rows, parentId) {
+  const gOk = rows.filter(r=>checkStatus(r,ct.key).s==='pass').length;
+  const gWn = rows.filter(r=>checkStatus(r,ct.key).s==='warn').length;
+  const gFl = rows.filter(r=>checkStatus(r,ct.key).s==='fail').length;
+  const gEr = rows.filter(r=>checkStatus(r,ct.key).s==='error').length;
+  const badges = [
+    gOk>0?`<span class="ibadge pass">${gOk} pass</span>`:'',
+    gWn>0?`<span class="ibadge warn">${gWn} warn</span>`:'',
+    gFl>0?`<span class="ibadge fail">${gFl} fail</span>`:'',
+    gEr>0?`<span class="ibadge error">${gEr} error</span>`:'',
+  ].join('');
+
+  const gid = parentId + '-' + ct.key;
+  const tableHtml = renderCheckTable(ct, rows);
+
+  return `
+  <div class="grp">
+    <div class="grp-hdr" onclick="toggleGrp('${gid}')">
+      <span class="grp-name">${ct.icon} ${ct.label.toUpperCase()}</span>
+      <span class="grp-badges">${badges}</span>
+      <span class="chev open" id="${gid}-chev">▶</span>
+    </div>
+    <div id="${gid}-body">${tableHtml}</div>
+  </div>`;
+}
+
+function renderCheckTable(ct, rows) {
+  const HEADER_TIPS = {
+    'DELTA': '% change in row count between the two most recent Iceberg snapshots. WARN if >20%. — means only one snapshot exists (first load or snapshots expired).',
+    'ROW COUNT': 'Total rows in the Iceberg table, read from the .files manifest (no data scan).',
+    'SOURCE ROWS': 'Rows counted from source parquet file footers (no data read).',
+    'TARGET ROWS': 'Rows counted from Iceberg Silver table manifest.',
+    'LAST SNAPSHOT': 'Timestamp of the most recent Iceberg snapshot write.',
+    'HIGH NULL COLUMNS': 'Columns with null rate above threshold. Incremental: PK cols only (>75%). Full-load: all cols >20%.',
+    'BUCKET': 'S3 Table bucket classification: optin, pii, or optout.',
+  };
+  const headers = {
+    row_count:       ['TABLE','ROW COUNT','DELTA','STATUS'],
+    source_target:   ['TABLE','SOURCE ROWS','TARGET ROWS','DELTA','DATE FOLDER','STATUS'],
+    schema_contract: ['TABLE','COLUMNS','STATUS'],
+    null_rate:       ['TABLE','HIGH NULL COLUMNS','STATUS'],
+    freshness:       ['TABLE','LAST SNAPSHOT','STATUS'],
+    cls_routing:     ['TABLE','BUCKET','DETAIL','STATUS'],
+  };
+  const hdrs = headers[ct.key] || ['TABLE','DETAIL','STATUS'];
+  const thHtml = hdrs.map((h,i)=>{
+    const tip = HEADER_TIPS[h];
+    return `<th${i>0&&i<hdrs.length-1?' class="r"':''}>${tip?`<span data-tip="${esc(tip)}">${h}</span>`:h}</th>`;
+  }).join('');
+
+  const tdRows = rows.map(r => {
+    const cs = checkStatus(r, ct.key);
+    const sbadge = `<span class="sbadge ${cs.s}">${cs.s.toUpperCase()}</span>`;
+    const tbl = `<td><b>${esc(r.table)}</b></td>`;
+    let cells = '';
+
+    if (ct.key === 'row_count') {
+      const rc  = (r.row_count??0).toLocaleString();
+      const dp  = r.row_delta_pct != null ? `${r.row_delta_pct>0?'+':''}${r.row_delta_pct.toFixed(1)}%` : '—';
+      cells = `<td class="r">${rc}</td><td class="r">${dp}</td>`;
+    } else if (ct.key === 'source_target') {
+      const src  = r.source_count_source_rows != null ? r.source_count_source_rows.toLocaleString() : '—';
+      const tgt  = r.source_count_target_rows != null ? r.source_count_target_rows.toLocaleString() : '—';
+      const dlt  = r.source_count_delta       != null ? r.source_count_delta.toLocaleString()        : '—';
+      const df   = esc(r.source_count_date_folder || cs.detail || '—');
+      cells = `<td class="r">${src}</td><td class="r">${tgt}</td><td class="r">${dlt}</td><td class="r">${df}</td>`;
+    } else if (ct.key === 'schema_contract') {
+      const missing = (r.schema_contract_missing||[]).join(', ') || '—';
+      cells = `<td class="r">${r.column_count??'?'} cols${missing!=='—'?'<div class="detail">missing: '+esc(missing)+'</div>':''}</td>`;
+    } else if (ct.key === 'null_rate') {
+      const hn = r.high_nulls || {};
+      const cols = Object.entries(hn).sort((a,b)=>b[1]-a[1]);
+      const txt = cols.length > 0
+        ? cols.map(([c,v])=>`${esc(c)}=${v}%`).join('&nbsp;&nbsp;')
+        : r.pk_null_status === 'FAIL' ? 'PK nulls'
+        : r.pk_null_status === 'WARN' ? 'PK partial nulls'
+        : '—';
+      cells = `<td>${txt}</td>`;
+    } else if (ct.key === 'freshness') {
+      const snap = r.last_snapshot_hours_ago != null ? `${r.last_snapshot_hours_ago}h ago` : '—';
+      cells = `<td class="r">${snap}</td>`;
+    } else if (ct.key === 'cls_routing') {
+      const cls = r.classification || '?';
+      const bkt = `<span class="cls-badge ${cls}">${cls.toUpperCase()}</span>`;
+      cells = `<td class="r">${bkt}</td><td>${esc(cs.detail)}</td>`;
+    }
+    return `<tr>${tbl}${cells}<td>${sbadge}</td></tr>`;
+  }).join('');
+
+  return `<table class="rtbl">
+    <thead><tr>${thHtml}</tr></thead>
+    <tbody>${tdRows}</tbody>
+  </table>`;
+}
+
+renderContent();
+
+// ── Toggle helpers ────────────────────────────────────────────────────────
+function toggleInst(id) {
+  const body = document.getElementById(id+'-body');
+  const chev = document.getElementById(id+'-chev');
+  const hidden = body.classList.toggle('hidden');
+  chev.classList.toggle('open', !hidden);
+}
+function toggleGrp(id) {
+  const body = document.getElementById(id+'-body');
+  const chev = document.getElementById(id+'-chev');
+  const hidden = body.classList.toggle('hidden');
+  chev.classList.toggle('open', !hidden);
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
