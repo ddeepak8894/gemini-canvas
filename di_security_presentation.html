@@ -220,6 +220,25 @@
       white-space: nowrap;
     }
 
+    /* ── Home button ── */
+    .home-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      text-decoration: none;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .home-btn:hover { color: white; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
+    .home-btn svg { width: 14px; height: 14px; }
+
     /* page layout */
     body { display: flex; flex-direction: column; }
   </style>
@@ -229,21 +248,22 @@
   <!-- Header -->
   <header>
     <div class="brand">
-      <div class="logo">
+      <a href="index.html" class="home-btn" title="Back to Home (H)">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
-      </div>
+        Home
+      </a>
       <div class="brand-text">
         <h1>Data Insights Platform</h1>
-        <p>Security Architecture · Leadership Presentation · 2026</p>
+        <p>Integration of Claude with Iceberg Data Lake Securely</p>
       </div>
     </div>
 
     <!-- Tabs -->
     <nav id="tabs">
-      <button class="tab active" data-idx="0">
+      <button class="tab" data-idx="0">
         <span class="dot"></span>
         Platform Architecture
       </button>
@@ -292,7 +312,7 @@
   <div class="stage" id="stage">
 
     <!-- Slide 0 — Platform Architecture (START HERE) -->
-    <div class="slide active" id="slide-0">
+    <div class="slide" id="slide-0">
       <iframe src="data_insights_ingestion_platform_architecture.html"
               title="Data Insights Ingestion Platform Architecture"
               loading="eager"></iframe>
@@ -348,16 +368,18 @@
 
   </div>
 
-  <div class="hint" id="hint">← → navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; R replay</div>
+  <div class="hint" id="hint">← → navigate &nbsp;·&nbsp; 1–5 jump &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; R replay &nbsp;·&nbsp; H home</div>
 
   <script>
     const SLIDES = 5;
-    let current = 0;
-
     const slides  = document.querySelectorAll('.slide');
     const tabs    = document.querySelectorAll('.tab');
     const counter = document.getElementById('counter');
     const hint    = document.getElementById('hint');
+
+    // Read ?slide=N from URL to deep-link from home page
+    const params = new URLSearchParams(window.location.search);
+    let current = Math.min(Math.max(parseInt(params.get('slide') || '0', 10), 0), SLIDES - 1);
 
     function goTo(idx) {
       slides[current].classList.remove('active');
@@ -367,6 +389,11 @@
       tabs[current].classList.add('active');
       counter.textContent = `${current + 1} / ${SLIDES}`;
     }
+
+    // Initialise active slide from URL param
+    slides[current].classList.add('active');
+    tabs[current].classList.add('active');
+    counter.textContent = `${current + 1} / ${SLIDES}`;
 
     // Tab clicks
     tabs.forEach(t => t.addEventListener('click', () => goTo(+t.dataset.idx)));
@@ -389,6 +416,7 @@
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  { e.preventDefault(); goTo(current + 1); }
       if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    { e.preventDefault(); goTo(current - 1); }
       if (e.key === 'f' || e.key === 'F') document.getElementById('fsBtn').click();
+      if (e.key === 'h' || e.key === 'H') window.location.href = 'index.html';
       if (e.key === 'r' || e.key === 'R') {
         const iframe = slides[current].querySelector('iframe');
         if (iframe) { iframe.src = iframe.src; }
